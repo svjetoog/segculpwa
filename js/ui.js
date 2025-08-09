@@ -12,6 +12,7 @@ const FERTILIZER_LINES = {
     "Advanced Nutrients": ["Sensi Grow A+B", "Sensi Bloom A+B", "Voodoo Juice", "B-52", "Big Bud", "Overdrive", "Flawless Finish"],
     "Athena (Blended)": ["Grow A", "Grow B", "Bloom A", "Bloom B", "CaMg", "PK", "Cleanse"],
     "Orgánico / Living Soil": ["Humus de lombriz", "Compost", "Bokashi", "Guano de murciélago", "Harina de hueso", "Melaza", "Micorrizas", "Trichodermas"],
+    "Plagron": ["Power Roots", "Terra Grow", "Terra Bloom", "Pure Zym", "Sugar Royal", "Green Sensation", "PK 13-14"], // <-- AÑADE ESTA LÍNEA
     "Personalizada": []
 };
 
