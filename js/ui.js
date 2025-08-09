@@ -398,11 +398,16 @@ export function renderCicloDetails(ciclo, handlers) {
                 }).join('')}
             </div>` : `<p class="text-center text-gray-500 dark:text-gray-400">No hay semanas definidas.</p>`;
         
+        // CORREGIDO: Lógica de botones de acción principal
         const mainActionButtons = `
             <div class="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row items-center justify-center gap-4">
                 <button id="add-week-btn" class="btn-secondary btn-base py-2 px-4 rounded-lg w-full sm:w-auto">
                     + Añadir Semana de ${ciclo.phase === 'Floración' ? 'Floración' : 'Vegetativo'}
                 </button>
+                ${ciclo.phase === 'Vegetativo' ? `
+                <button id="pasar-a-flora-btn" data-ciclo-id="${ciclo.id}" data-ciclo-name="${ciclo.name}" class="btn-primary btn-base py-2 px-4 rounded-lg font-bold w-full sm:w-auto animate-pulse">
+                    Pasar a Floración 🌸
+                </button>` : ''}
                 ${ciclo.phase === 'Floración' ? `
                 <button id="iniciar-secado-btn" class="btn-primary btn-base py-2 px-4 rounded-lg font-bold w-full sm:w-auto">
                     🌱 Poner a Secar
@@ -450,7 +455,6 @@ export function renderCicloDetails(ciclo, handlers) {
             });
         });
 
-        // NUEVO: Listener para el botón de eliminar semana.
         document.querySelectorAll('[data-action="delete-week"]').forEach(btn => {
             if (!btn.disabled) {
                 btn.addEventListener('click', (e) => {
@@ -458,7 +462,6 @@ export function renderCicloDetails(ciclo, handlers) {
                     handlers.handleDeleteLastWeek(e.currentTarget.dataset.cicloId);
                 });
             } else {
-                // Aseguramos que el tooltip se inicialice para los botones deshabilitados
                 tippy(btn, {
                     animation: 'scale-subtle',
                     theme: 'light-border',
