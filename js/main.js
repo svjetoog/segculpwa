@@ -918,8 +918,6 @@ showCicloDetails: async (ciclo) => {
             }
 
             const fertilizersUsed = [];
-            const selectedLine = getEl('fert-line-select').value;
-
             document.querySelectorAll('.fert-line-block').forEach(block => {
                 const selectedLine = block.querySelector('.fert-line-select').value;
                 if (selectedLine === 'Personalizada') {
@@ -949,15 +947,15 @@ showCicloDetails: async (ciclo) => {
             });
             logData.fertilizers = fertilizersUsed;
 
-
         } else if (logData.type === 'Control de Plagas') {
             logData.notes = getEl('plagas-notes').value.trim();
         } else if (logData.type === 'Podas') {
             logData.podaType = getEl('podaType').value;
             if (logData.podaType === 'Clones') {
-                logData.clonesCount = getEl('clones-count').value || 0;
+                logData.clonesCount = parseInt(getEl('clones-count').value) || 0;
+                // Lógica para actualizar el stock de clones si es necesario
             }
-        } else if (logData.type === 'Trasplante') {
+        } else if (logData.type === 'Trasplante') { // NUEVO
             logData.details = getEl('trasplante-details').value.trim();
         }
 
