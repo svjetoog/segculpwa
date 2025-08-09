@@ -920,31 +920,35 @@ showCicloDetails: async (ciclo) => {
             const fertilizersUsed = [];
             const selectedLine = getEl('fert-line-select').value;
 
-            if (selectedLine === 'Personalizada') {
-                document.querySelectorAll('.custom-fert-row').forEach(row => {
-                    const productName = row.querySelector('.fert-product-name').value.trim();
-                    const dose = row.querySelector('.fert-dose').value;
-                    if (productName && dose) {
-                        fertilizersUsed.push({
-                            productName: productName,
-                            dose: parseFloat(dose),
-                            unit: row.querySelector('.fert-unit').value
-                        });
-                    }
-                });
-            } else {
-                document.querySelectorAll('.product-row').forEach(row => {
-                    const dose = row.querySelector('.fert-dose').value;
-                    if (dose) {
-                        fertilizersUsed.push({
-                            productName: row.querySelector('.fert-dose').dataset.productName,
-                            dose: parseFloat(dose),
-                            unit: row.querySelector('.fert-unit').value
-                        });
-                    }
-                });
-            }
+            document.querySelectorAll('.fert-line-block').forEach(block => {
+                const selectedLine = block.querySelector('.fert-line-select').value;
+                if (selectedLine === 'Personalizada') {
+                    block.querySelectorAll('.custom-fert-row').forEach(row => {
+                        const productName = row.querySelector('.fert-product-name').value.trim();
+                        const dose = row.querySelector('.fert-dose').value;
+                        if (productName && dose) {
+                            fertilizersUsed.push({
+                                productName: productName,
+                                dose: parseFloat(dose),
+                                unit: row.querySelector('.fert-unit').value
+                            });
+                        }
+                    });
+                } else {
+                    block.querySelectorAll('.product-row').forEach(row => {
+                        const dose = row.querySelector('.fert-dose').value;
+                        if (dose) {
+                            fertilizersUsed.push({
+                                productName: row.querySelector('.fert-dose').dataset.productName,
+                                dose: parseFloat(dose),
+                                unit: row.querySelector('.fert-unit').value
+                            });
+                        }
+                    });
+                }
+            });
             logData.fertilizers = fertilizersUsed;
+
 
         } else if (logData.type === 'Control de Plagas') {
             logData.notes = getEl('plagas-notes').value.trim();
@@ -953,6 +957,8 @@ showCicloDetails: async (ciclo) => {
             if (logData.podaType === 'Clones') {
                 logData.clonesCount = getEl('clones-count').value || 0;
             }
+        } else if (logData.type === 'Trasplante') {
+            logData.details = getEl('trasplante-details').value.trim();
         }
 
         try {
