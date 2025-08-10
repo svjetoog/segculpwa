@@ -57,26 +57,96 @@
 
     .ciclos-list { display: flex; flex-direction: column; gap: 0.35rem; }
     
-    .ciclo-item { 
-        background-color: #e5e7eb;
-        border: 1px solid #d1d5db;
-        color: #1f2937;
-        padding: 0.35rem 2rem 0.35rem 0.75rem; border-radius: 0.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: all 0.2s ease-out; font-size: 0.875rem; position: relative; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; 
+    .ciclo-item-container {
+    position: relative; /* Clave para posicionar el menú */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.35rem 0.5rem;
+    border-radius: 0.5rem;
+    transition: background-color 0.2s ease-out;
     }
-    .dark .ciclo-item {
+    .ciclo-item-container:hover {
+        background-color: #f3f4f6; /* Un sutil efecto de hover */
+    }
+    .dark .ciclo-item-container:hover {
         background-color: #404040;
-        border: 1px solid #525252;
-        color: #e5e5e5;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.4);
     }
-    .ciclo-item:hover { transform: translateY(-2px); border-color: #f59e0b; z-index: 10; }
-    .ciclo-item::after { content: ''; position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); width: 0.65rem; height: 0.65rem; border-radius: 9999px; border: 1px solid rgba(0,0,0,0.5); }
-    .ciclo-item.vege::after { background-color: #4ade80; }
-    .ciclo-item.pre-flora::after { background-color: #c084fc; }
-    .ciclo-item.flora::after { background-color: #f472b6; }
-    .ciclo-item.maduracion::after { background-color: #fb923c; }
-    .ciclo-item.lavado::after { background-color: #60a5fa; }
-    .ciclo-item.secado::after { background-color: #facc15; }
+    .ciclo-item-link {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        cursor: pointer;
+        flex-grow: 1;
+        min-width: 0; /* Evita que el contenedor se desborde */
+    }
+    .ciclo-item-link .ciclo-name {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        color: #1f2937;
+        font-size: 0.875rem;
+    }
+    .dark .ciclo-item-link .ciclo-name {
+        color: #e5e5e5;
+    }
+    .ciclo-status-dot {
+        width: 0.65rem;
+        height: 0.65rem;
+        border-radius: 9999px;
+        flex-shrink: 0; /* Evita que el punto se encoja */
+        border: 1px solid rgba(0,0,0,0.5);
+    }
+    /* Mantenemos tus clases de colores existentes */
+    .ciclo-status-dot.vegetativo { background-color: #4ade80; }
+    .ciclo-status-dot.pre-flora { background-color: #c084fc; }
+    .ciclo-status-dot.flora { background-color: #f472b6; }
+    .ciclo-status-dot.maduracion { background-color: #fb923c; }
+    .ciclo-status-dot.lavado { background-color: #60a5fa; }
+    .ciclo-status-dot.secado { background-color: #facc15; }
+
+    .ciclo-actions-menu {
+        position: absolute;
+        right: 0;
+        top: 100%;
+        margin-top: 0.25rem;
+        z-index: 30; /* Asegura que esté por encima de otros elementos */
+        width: 160px;
+        background-color: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-radius: 0.5rem;
+        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        transform-origin: top right;
+        transition: transform 0.1s ease-out, opacity 0.1s ease-out;
+    }
+    .dark .ciclo-actions-menu {
+        background-color: #262626;
+        border-color: #404040;
+    }
+    /* Para la animación de aparición */
+    .ciclo-actions-menu.hidden {
+        transform: scale(0.95);
+        opacity: 0;
+        pointer-events: none;
+    }
+    .ciclo-actions-menu a {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.875rem;
+        color: #374151;
+        cursor: pointer;
+    }
+    .dark .ciclo-actions-menu a {
+        color: #e5e5e5;
+    }
+    .ciclo-actions-menu a:hover {
+        background-color: #f3f4f6;
+    }
+    .dark .ciclo-actions-menu a:hover {
+        background-color: #525252;
+    }
 
     .compact-list-item {
         background-color: #ffffff;
@@ -377,7 +447,7 @@
                  Grupo Telegram
             </a>
             <div class="text-xs text-gray-500 dark:text-gray-600 font-mono">
-                SegCul v0.353 by svjeto
+                SegCul v0.4c by svjeto
             </div>
         </footer>
     </div>

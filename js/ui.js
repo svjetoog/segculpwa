@@ -817,27 +817,79 @@ export function renderSalasGrid(salas, ciclos, handlers) {
         salaCard.className = 'card rounded-xl p-5 flex flex-col justify-between aspect-square relative';
         salaCard.dataset.salaId = sala.id;
         
-        let ciclosPreviewHTML = '';
+        // Contenedor para la lista de ciclos
+        const ciclosPreviewContainer = document.createElement('div');
+        ciclosPreviewContainer.className = 'ciclos-list space-y-1';
+
         if (activeCiclos.length > 0) {
-            const listHTML = activeCiclos.map(c => {
-                let phaseClass = 'vege';
-                if (c.estado === 'en_secado') {
+            activeCiclos.forEach(ciclo => {
+                // Contenedor principal para cada fila de ciclo
+                const cicloItemContainer = document.createElement('div');
+                cicloItemContainer.className = 'ciclo-item-container';
+
+                // 1. Enlace principal (navegación)
+                const cicloLink = document.createElement('div');
+                cicloLink.className = 'ciclo-item-link';
+                cicloLink.onclick = () => handlers.showCicloDetails(ciclo);
+
+                let phaseClass = 'finalizado';
+                if (ciclo.estado === 'en_secado') {
                     phaseClass = 'secado';
-                } else if (c.phase === 'Floración' && c.floweringStartDate && c.floweringWeeks) {
-                    const diffDays = handlers.calculateDaysSince(c.floweringStartDate);
-                    if (diffDays !== null && diffDays > 0) {
-                        const currentWeek = Math.floor((diffDays - 1) / 7) + 1;
-                        const weekData = c.floweringWeeks.find(w => w.weekNumber === currentWeek);
-                        if (weekData) {
-                            phaseClass = handlers.getPhaseInfo(weekData.phaseName).class;
-                        }
+                } else if (ciclo.phase === 'Vegetativo') {
+                    phaseClass = 'vegetativo';
+                } else if (ciclo.phase === 'Floración' && ciclo.floweringStartDate && ciclo.floweringWeeks) {
+                    const diffDays = handlers.calculateDaysSince(ciclo.floweringStartDate);
+                    if (diffDays !== null && diffDays >= 0) {
+                        const currentWeek = Math.floor(diffDays / 7) + 1;
+                        const weekData = ciclo.floweringWeeks.find(w => w.weekNumber === currentWeek);
+                        phaseClass = weekData ? handlers.getPhaseInfo(weekData.phaseName).class : 'flora';
+                    } else {
+                        phaseClass = 'flora';
                     }
                 }
-                return `<div class="ciclo-item ${phaseClass}">${c.name}</div>`;
-            }).join('');
-            ciclosPreviewHTML = `<div class="ciclos-list">${listHTML}</div>`;
+
+                cicloLink.innerHTML = `
+                    <div class="ciclo-status-dot ${phaseClass}"></div>
+                    <span class="ciclo-name">${ciclo.name}</span>
+                `;
+
+                // 2. Botón de acciones "..."
+                const actionsButton = document.createElement('button');
+                actionsButton.className = 'btn-base p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600';
+                actionsButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM12.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM18.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z" /></svg>`;
+                
+                // 3. Menú de acciones (oculto)
+                const actionsMenu = document.createElement('div');
+                actionsMenu.className = 'ciclo-actions-menu hidden';
+                actionsMenu.innerHTML = `
+                    <a data-action="edit-ciclo">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" /></svg>
+                        Editar
+                    </a>
+                    <a data-action="move-ciclo">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path d="M7.5 21 3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" /></svg>
+                        Mover
+                    </a>
+                    <a data-action="delete-ciclo" class="text-red-500 dark:text-red-400">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.134-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.067-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>
+                        Eliminar
+                    </a>
+                `;
+                
+                // Asignar eventos
+                actionsButton.onclick = (e) => handlers.handleToggleCicloMenu(e, actionsMenu);
+                actionsMenu.querySelector('[data-action="edit-ciclo"]').onclick = () => handlers.openCicloModal(ciclo);
+                actionsMenu.querySelector('[data-action="move-ciclo"]').onclick = () => handlers.openMoveCicloModal(ciclo.id);
+                actionsMenu.querySelector('[data-action="delete-ciclo"]').onclick = () => handlers.deleteCiclo(ciclo.id, ciclo.name);
+
+                // Ensamblar la fila
+                cicloItemContainer.appendChild(cicloLink);
+                cicloItemContainer.appendChild(actionsButton);
+                cicloItemContainer.appendChild(actionsMenu);
+                ciclosPreviewContainer.appendChild(cicloItemContainer);
+            });
         } else {
-            ciclosPreviewHTML = '<p class="text-sm text-gray-500 dark:text-gray-400">Sala vacía</p>';
+            ciclosPreviewContainer.innerHTML = '<p class="text-sm text-gray-500 dark:text-gray-400">Sala vacía</p>';
         }
 
         salaCard.innerHTML = `
@@ -846,20 +898,24 @@ export function renderSalasGrid(salas, ciclos, handlers) {
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
                 </button>
             </div>
-            <div class="flex-grow flex flex-col cursor-pointer" data-action="open-sala">
-                <h3 class="text-2xl font-bold text-amber-400">${sala.name}</h3>
+            <div class="flex-grow flex flex-col">
+                <h3 class="text-2xl font-bold text-amber-400 cursor-pointer" data-action="open-sala">${sala.name}</h3>
                 <p class="text-gray-500 dark:text-gray-400 mb-4">${activeCiclos.length} ciclo(s) activo(s)</p>
-                <div class="flex-grow relative overflow-y-auto">${ciclosPreviewHTML}</div>
+                <div class="flex-grow relative overflow-y-auto"></div>
             </div>
             <div class="flex justify-end gap-2 mt-4 flex-wrap">
                 <button data-action="edit-sala" class="btn-secondary btn-base p-2 rounded-lg" title="Editar Sala">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg>
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg>
                 </button>
                 <button data-action="delete-sala" class="btn-danger btn-base p-2 rounded-lg" title="Eliminar Sala">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.134-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.067-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.134-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.067-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>
                 </button>
             </div>
         `;
+        // Insertamos el contenedor de ciclos en la tarjeta
+        salaCard.querySelector('.flex-grow.relative').appendChild(ciclosPreviewContainer);
+
+        // Asignamos eventos de la tarjeta de sala
         salaCard.querySelector('[data-action="open-sala"]').addEventListener('click', (e) => {
             handlers.showCiclosView(sala.id, sala.name);
         });

@@ -600,7 +600,19 @@ const handlers = {
         currentSalaId = null;
         currentSalaName = null;
     },
-    // REEMPLAZA tu función showCicloDetails actual con esta versión completa
+    handleToggleCicloMenu: (e, menuElement) => {
+    e.stopPropagation(); // ¡Muy importante! Evita que se dispare el clic de navegación.
+
+    // Primero, cierra todos los otros menús que puedan estar abiertos
+    document.querySelectorAll('.ciclo-actions-menu').forEach(menu => {
+        if (menu !== menuElement) {
+            menu.classList.add('hidden');
+        }
+    });
+
+    // Luego, abre o cierra el menú actual
+    menuElement.classList.toggle('hidden');
+    },
 showCicloDetails: async (ciclo) => {
         if (logsUnsubscribe) logsUnsubscribe();
 
@@ -1294,6 +1306,13 @@ onAuthStateChanged(auth, user => {
         loadSeeds();
         loadHistorial();
         initializeEventListeners(handlers);
+        window.addEventListener('click', (e) => {
+            if (!e.target.closest('.ciclo-item-container')) {
+                document.querySelectorAll('.ciclo-actions-menu').forEach(menu => {
+                    menu.classList.add('hidden');
+                });
+            }
+        });
 
         getEl('searchSalas').addEventListener('input', e => {
             const searchTerm = e.target.value.toLowerCase();
