@@ -202,6 +202,7 @@ export function openLogModal(ciclo, week, log = null) {
             const addLineBtn = getEl('add-fert-line-btn');
             const linesContainer = getEl('fertilizer-lines-container');
             
+            // MODIFICADO: Ahora esta función interna pre-selecciona la línea guardada
             const addFertilizerLineBlock = () => {
                 const lineBlock = document.createElement('div');
                 lineBlock.className = 'fert-line-block border border-gray-300 dark:border-gray-600 p-3 rounded-md relative mt-2';
@@ -223,10 +224,16 @@ export function openLogModal(ciclo, week, log = null) {
                 const lineSelect = lineBlock.querySelector('.fert-line-select');
                 const productsContainer = lineBlock.querySelector('.fertilizer-products-container');
 
+                // --- NUEVO: Lógica de pre-selección ---
+                if (ciclo.lastUsedFertilizerLine) {
+                    lineSelect.value = ciclo.lastUsedFertilizerLine;
+                }
+
                 lineSelect.addEventListener('change', () => renderFertilizerProducts(lineSelect.value, productsContainer));
                 lineBlock.querySelector('.remove-line-btn').addEventListener('click', () => lineBlock.remove());
                 
-                renderFertilizerProducts(lineSelect.value, productsContainer);
+                // Disparamos el 'change' para renderizar los productos de la línea (pre)seleccionada
+                renderFertilizerProducts(lineSelect.value, productsContainer); 
             };
 
             addLineBtn.addEventListener('click', addFertilizerLineBlock);
@@ -249,7 +256,7 @@ export function openLogModal(ciclo, week, log = null) {
                 </div>
             `;
             getEl('podaType').addEventListener('change', () => getEl('clonesSection').style.display = getEl('podaType').value === 'Clones' ? 'block' : 'none');
-        } else if (type === 'Trasplante') { // NUEVO: Campo para Trasplante
+        } else if (type === 'Trasplante') { 
             logFieldsContainer.innerHTML = `
                 <label for="trasplante-details" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Detalles del Trasplante</label>
                 <input type="text" id="trasplante-details" placeholder="Ej: Maceta de 10L, de 1L a 3L, etc." class="w-full p-2 rounded-md">
