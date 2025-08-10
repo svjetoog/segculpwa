@@ -650,8 +650,11 @@ showCicloDetails: async (ciclo) => {
         detailView.classList.add('view-container');
 
         // Añadir listeners a los botones recién creados
-        getEl('backToCiclosBtn').addEventListener('click', () => handlers.showCiclosView(ciclo.salaId, currentSalas.find(s=>s.id === ciclo.salaId)?.name));
-        
+        getEl('backToCiclosBtn').addEventListener('click', () => {
+            handlers.hideAllViews();
+            getEl('app').classList.remove('hidden');
+            getEl('app').classList.add('view-container');
+        });
         const addWeekBtn = getEl('add-week-btn');
         if(addWeekBtn) addWeekBtn.addEventListener('click', () => handlers.handleAddWeek(ciclo.id));
         
