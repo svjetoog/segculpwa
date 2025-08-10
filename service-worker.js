@@ -1,7 +1,7 @@
 // js/service-worker.js
 
 // Nombre y versión del caché. Cambiar la versión fuerza la actualización del caché.
-const CACHE_NAME = 'segcul-cache-v1';
+const CACHE_NAME = 'segcul-cache-v0.4';
 
 // Archivos esenciales de la aplicación (el "App Shell") que se guardarán para funcionar offline.
 const urlsToCache = [
@@ -32,9 +32,30 @@ self.addEventListener('install', event => {
         console.log('Cache abierto');
         return cache.addAll(urlsToCache);
       })
+      .then(() => {
+        // Esta línea es clave: le dice al SW que se active ya, sin esperar
+        return self.skipWaiting(); 
+      })
   );
 });
-
+self.addEventListener('activate', event => {
+  event.waitUntil(
+    caches.keys().then(cacheNames => {
+      return Promise.all(
+        cacheNames.map(cache => {
+          // Si el nombre del caché no es el actual, lo borramos.
+          if (cache !== CACHE_NAME) {
+            console.log('Borrando caché antigua:', cache);
+            return caches.delete(cache);
+          }
+        })
+      );
+    }).then(() => {
+      // Le dice al SW que tome control de todas las pestañas abiertas inmediatamente.
+      return self.clients.claim();
+    })
+  );
+});
 // Evento 'fetch': Se dispara cada vez que la aplicación pide un recurso (una página, un script, una imagen).
 // Aquí interceptamos la petición y decidimos si la servimos desde el caché o desde la red.
 self.addEventListener('fetch', event => {
