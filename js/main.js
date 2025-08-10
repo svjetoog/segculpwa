@@ -857,6 +857,23 @@ showCicloDetails: async (ciclo) => {
             });
         }
     },
+    handleToggleFavorite: async (id) => {
+    const genetic = currentGenetics.find(g => g.id === id);
+    if (!genetic) return;
+
+    const newFavoriteState = !genetic.favorita;
+    const geneticRef = doc(db, `users/${userId}/genetics`, id);
+
+    try {
+        await updateDoc(geneticRef, {
+            favorita: newFavoriteState
+        });
+        showNotification(`"${genetic.name}" ${newFavoriteState ? 'marcada como favorita.' : 'ya no es favorita.'}`);
+    } catch (error) {
+        console.error("Error updating favorite status:", error);
+        showNotification('Error al actualizar el estado de favorito.', 'error');
+    }
+    },
     updateStock: async (id, amount) => {
         try {
             const geneticRef = doc(db, `users/${userId}/genetics`, id);
