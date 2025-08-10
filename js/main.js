@@ -52,6 +52,46 @@ function handleAuthError(error) {
     }
 }
 
+function exportToCSV(data, filename) {
+    if (!data || data.length === 0) {
+        showNotification('No hay datos para exportar.', 'error');
+        return;
+    }
+
+    // Crear las cabeceras del CSV a partir de las claves del primer objeto
+    const headers = Object.keys(data[0]);
+    // Unir las cabeceras con comas para la primera fila del CSV
+    const csvRows = [headers.join(',')];
+
+    // Recorrer cada fila de datos
+    for (const row of data) {
+        const values = headers.map(header => {
+            // Escapar comillas dobles dentro de los valores para no romper el CSV
+            const escaped = ('' + row[header]).replace(/"/g, '""');
+            // Envolver cada valor en comillas dobles
+            return `"${escaped}"`;
+        });
+        csvRows.push(values.join(','));
+    }
+
+    // Unir todas las filas con saltos de línea
+    const csvString = csvRows.join('\n');
+    // Crear un objeto Blob, que es como un archivo en memoria
+    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+
+    // Crear un enlace temporal para descargar el archivo
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+
+    // Simular un clic en el enlace para iniciar la descarga y luego eliminarlo
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    showNotification('Exportación generada con éxito.');
+}
+
 function calculateDaysSince(startDateString) {
     if (!startDateString) return null;
     const start = new Date(startDateString + 'T00:00:00Z');
@@ -355,6 +395,30 @@ const handlers = {
                 getEl('authError').classList.remove('hidden');
             });
     },
+    handleExportCSV: () => {
+    // Generar un string con la fecha actual para el nombre del archivo
+    const now = new Date();
+    const dateString = `${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}`;
+
+    if (activeToolsTab === 'stock') {
+        // Mapear los datos de genéticas al formato deseado para el CSV de stock
+        const stockData = currentGenetics.map(g => ({
+            nombre: g.name,
+            banco: g.bank || 'N/A',
+            stock_clones: g.cloneStock || 0,
+            favorita: g.favorita ? 'Si' : 'No'
+        }));
+        exportToCSV(stockData, `stock_clones_${dateString}.csv`);
+    } else if (activeToolsTab === 'baulSemillas') {
+        // Mapear los datos de semillas al formato deseado
+        const seedData = currentSeeds.map(s => ({
+            nombre: s.name,
+            banco: s.bank || 'N/A',
+            cantidad: s.quantity || 0
+        }));
+        exportToCSV(seedData, `baul_semillas_${dateString}.csv`);
+    }
+},
 	handlePasarAFlora: (cicloId, cicloName) => {
     handlers.showConfirmationModal(`¿Seguro que quieres pasar el ciclo "${cicloName}" a Floración? Esto establecerá la fecha de floración a hoy y generará las 9 semanas estándar.`, async () => {
         try {
@@ -635,6 +699,9 @@ showCicloDetails: async (ciclo) => {
         getEl('searchTools').addEventListener('input', handlers.handleToolsSearch);
         getEl('view-mode-card').addEventListener('click', () => handlers.handleViewModeToggle('card'));
         getEl('view-mode-list').addEventListener('click', () => handlers.handleViewModeToggle('list'));
+      getEl('view-mode-card').addEventListener('click', () => handlers.handleViewModeToggle('card'));
+      getEl('view-mode-list').addEventListener('click', () => handlers.handleViewModeToggle('list'));
+      getEl('exportCsvBtn').addEventListener('click', handlers.handleExportCSV); // <- AÑADIR ESTA LÍNEA
     },
     hideToolsView: () => {
         const view = getEl('toolsView');
@@ -670,26 +737,34 @@ showCicloDetails: async (ciclo) => {
         });
     },
     switchToolsTab: (newTab) => {
-        activeToolsTab = newTab;
-        ['genetics', 'stock', 'baulSemillas', 'historial'].forEach(tab => {
-            getEl(`${tab}Content`).classList.toggle('hidden', tab !== activeToolsTab);
-            getEl(`${tab}TabBtn`).classList.toggle('border-amber-400', tab === activeToolsTab);
-            getEl(`${tab}TabBtn`).classList.toggle('border-transparent', tab !== activeToolsTab);
-        });
+    activeToolsTab = newTab;
+    ['genetics', 'stock', 'baulSemillas', 'historial'].forEach(tab => {
+        getEl(`${tab}Content`).classList.toggle('hidden', tab !== activeToolsTab);
+        getEl(`${tab}TabBtn`).classList.toggle('border-amber-400', tab === activeToolsTab);
+        getEl(`${tab}TabBtn`).classList.toggle('border-transparent', tab !== activeToolsTab);
+    });
 
-        const searchTools = getEl('searchTools');
-        const viewMode = getEl('view-mode-toggle');
-        
-        if (newTab === 'historial') {
-            searchTools.placeholder = 'Buscar por genética, sala...';
-            viewMode.classList.add('hidden');
-            renderHistorialView(currentHistorial, handlers);
+    const searchTools = getEl('searchTools');
+    const viewMode = getEl('view-mode-toggle');
+    const exportBtn = getEl('exportCsvBtn'); // <- Referencia al nuevo botón
+
+    if (newTab === 'historial') {
+        searchTools.placeholder = 'Buscar por genética, sala...';
+        viewMode.classList.add('hidden');
+        exportBtn.classList.add('hidden'); // Ocultar para el historial
+        renderHistorialView(currentHistorial, handlers);
+    } else {
+        searchTools.placeholder = 'Buscar por nombre...';
+        viewMode.classList.remove('hidden');
+        // Mostrar el botón solo para stock y semillas
+        if (newTab === 'stock' || newTab === 'baulSemillas') {
+             exportBtn.classList.remove('hidden');
         } else {
-            searchTools.placeholder = 'Buscar por nombre...';
-            viewMode.classList.remove('hidden');
-            handlers.handleToolsSearch({ target: { value: '' } });
+             exportBtn.classList.add('hidden'); // Ocultar para genéticas
         }
-    },
+        handlers.handleToolsSearch({ target: { value: '' } });
+    }
+},
     handleToolsSearch: (e) => {
         const searchTerm = e.target.value.toLowerCase();
         let filteredData;
