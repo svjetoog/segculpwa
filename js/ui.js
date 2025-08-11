@@ -884,18 +884,8 @@ export function renderToolsView() {
             <div id="stockList" class="space-y-4"></div>
         </div>
         <div id="baulSemillasContent" class="hidden">
-            <div id="baulSemillasListContainer" class="flex flex-col md:flex-row gap-8">
-                <div class="w-full md:w-2/5 lg:w-1/3">
-                    <form id="seedForm" class="card p-6 space-y-4">
-                        <h3 class="text-xl font-bold text-amber-400">Añadir Semillas al Baúl</h3>
-                        <input type="text" id="seed-name" placeholder="Nombre de la semilla" required class="w-full p-2 rounded-md">
-                        <input type="text" id="seed-bank" placeholder="Banco de origen" class="w-full p-2 rounded-md">
-                        <input type="number" id="seed-quantity" placeholder="Cantidad" required class="w-full p-2 rounded-md">
-                        <button type="submit" class="btn-primary btn-base w-full py-2 rounded-lg">Añadir al Baúl</button>
-                    </form>
+            <div id="baulSemillasList" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 </div>
-                <div id="baulSemillasList" class="w-full md:w-3/5 lg:w-2/3 space-y-4"></div>
-            </div>
         </div>
         <div id="historialContent" class="hidden">
             <div class="flex flex-col md:flex-row gap-8">

@@ -893,8 +893,6 @@ const handlers = {
         getEl('stockTabBtn').addEventListener('click', () => handlers.switchToolsTab('stock'));
         getEl('baulSemillasTabBtn').addEventListener('click', () => handlers.switchToolsTab('baulSemillas'));
         getEl('historialTabBtn').addEventListener('click', () => handlers.switchToolsTab('historial'));
-        getEl('geneticsForm').addEventListener('submit', handlers.handleGeneticsFormSubmit);
-        getEl('seedForm').addEventListener('submit', handlers.handleSeedFormSubmit);
         getEl('searchTools').addEventListener('input', handlers.handleToolsSearch);
         getEl('view-mode-card').addEventListener('click', () => handlers.handleViewModeToggle('card'));
         getEl('view-mode-list').addEventListener('click', () => handlers.handleViewModeToggle('list'));
