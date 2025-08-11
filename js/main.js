@@ -492,14 +492,14 @@ const handlers = {
         // Pasa los datos actuales y la función de callback a la UI.
         uiOpenGeneticsSelectorModal(currentGenetics, currentSeeds, onConfirmCallback);
     },
-    // MODIFICADO: Lógica de creación de ciclo completamente nueva.
+    // MODIFICADO: Lógica de creación de ciclo con control granular de phenohunt
     handleCicloFormSubmit: async (e) => {
         e.preventDefault();
         const form = e.target;
         const cicloId = form.dataset.id;
 
-        // Si estamos editando, usamos la lógica anterior (simplificada)
         if (cicloId) {
+            // La lógica de edición no cambia, la mantenemos como estaba.
             const cicloData = {
                 name: getEl('ciclo-name').value.trim(),
                 salaId: getEl('ciclo-sala-select').value,
@@ -509,10 +509,8 @@ const handlers = {
                 floweringStartDate: getEl('floweringStartDate').value,
                 notes: getEl('ciclo-notes').value.trim(),
             };
-
             if (!cicloData.name || !cicloData.salaId) {
-                showNotification('Nombre y sala son obligatorios.', 'error');
-                return;
+                showNotification('Nombre y sala son obligatorios.', 'error'); return;
             }
             try {
                 const originalCiclo = currentCiclos.find(c => c.id === cicloId);
@@ -542,7 +540,6 @@ const handlers = {
             return;
         }
         
-        const isPhenohunt = getEl('is-phenohunt').checked;
         const cicloData = {
             name: getEl('ciclo-name').value.trim(),
             salaId: getEl('ciclo-sala-select').value,
@@ -552,8 +549,8 @@ const handlers = {
             floweringStartDate: getEl('floweringStartDate').value,
             notes: getEl('ciclo-notes').value.trim(),
             estado: 'activo',
-            isPhenohunt: isPhenohunt,
-            genetics: [] // Se llenará a continuación
+            isPhenohunt: selectedGenetics.some(g => g.trackIndividually), // El ciclo es phenohunt si al menos un item lo es.
+            genetics: []
         };
 
         if (!cicloData.name || !cicloData.salaId) {
@@ -564,35 +561,38 @@ const handlers = {
         try {
             const batch = writeBatch(db);
 
-            // 1. Preparar el array de genéticas para el ciclo
-            if (isPhenohunt) {
-                selectedGenetics.forEach(item => {
+            // 1. Preparar el array de genéticas para el ciclo según el tracking individual
+            selectedGenetics.forEach(item => {
+                if (item.trackIndividually) {
                     for (let i = 0; i < item.quantity; i++) {
                         cicloData.genetics.push({
-                            id: item.id, // ID del origen (clon o semilla)
+                            id: item.id,
                             name: `${item.name} #${i + 1}`,
                             quantity: 1,
                             source: item.source,
-                            phenoId: `${item.id}-${Date.now()}-${i}` // ID único para el individuo
+                            phenoId: `${item.id}-${Date.now()}-${i}`
                         });
                     }
-                });
-            } else {
-                cicloData.genetics = selectedGenetics;
-            }
+                } else {
+                    // Se añade como un solo grupo
+                    cicloData.genetics.push({
+                        id: item.id,
+                        name: item.name,
+                        quantity: item.quantity,
+                        source: item.source
+                    });
+                }
+            });
 
-            // 2. Añadir semanas iniciales según la fase
             if (cicloData.phase === 'Floración') {
                 cicloData.floweringWeeks = generateStandardWeeks();
             } else if (cicloData.phase === 'Vegetativo') {
                 cicloData.vegetativeWeeks = calculateVegetativeWeeks(cicloData.vegetativeStartDate);
             }
 
-            // 3. Añadir el nuevo ciclo al batch
             const newCicloRef = doc(collection(db, `users/${userId}/ciclos`));
             batch.set(newCicloRef, cicloData);
 
-            // 4. Actualizar el stock de clones y semillas en el batch
             for (const item of selectedGenetics) {
                 const collectionName = item.source === 'clone' ? 'genetics' : 'seeds';
                 const stockField = item.source === 'clone' ? 'cloneStock' : 'quantity';
@@ -600,7 +600,6 @@ const handlers = {
                 batch.update(itemRef, { [stockField]: increment(-item.quantity) });
             }
 
-            // 5. Ejecutar todas las operaciones
             await batch.commit();
 
             showNotification('Ciclo creado con éxito. Stock actualizado.');

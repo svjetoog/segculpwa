@@ -115,18 +115,10 @@ export function openCicloModal(ciclo = null, salas = [], preselectedSalaId = nul
         ? salas.map(s => `<option value="${s.id}" ${ (ciclo && ciclo.salaId === s.id) || (preselectedSalaId === s.id) ? 'selected' : ''}>${s.name}</option>`).join('')
         : '<option value="" disabled>Crea una sala primero</option>';
     
-    // NUEVO: Contenido para la sección de genéticas y el checkbox de phenohunt.
     const geneticsSectionHTML = !ciclo ? `
         <hr class="border-gray-300 dark:border-gray-600 my-6">
         <div>
-            <div class="flex justify-between items-center mb-3">
-                <h3 class="text-lg font-medium text-gray-800 dark:text-gray-200">Genéticas del Ciclo</h3>
-                <label class="flex items-center gap-2 text-sm cursor-pointer">
-                    <input type="checkbox" id="is-phenohunt" class="h-4 w-4 rounded text-amber-500 focus:ring-amber-500">
-                    ¿Es un Phenohunt?
-                    ${createTooltipIcon("Marcar si quieres hacer seguimiento individual a cada planta. Ideal para encontrar un fenotipo específico.")}
-                </label>
-            </div>
+            <h3 class="text-lg font-medium text-gray-800 dark:text-gray-200 mb-3">Genéticas del Ciclo</h3>
             <div id="selected-genetics-container" class="space-y-2 mb-4">
                  <p class="text-sm text-gray-500 dark:text-gray-400 italic">Añade genéticas desde tu stock de clones o baúl de semillas.</p>
             </div>
@@ -244,13 +236,12 @@ function renderSelectedGeneticsForCiclo(selectedGenetics) {
     });
 }
 
-// NUEVO: El modal completo para el selector masivo de genéticas.
 export function openGeneticsSelectorModal(allGenetics, allSeeds, onConfirm) {
     let currentSelection = []; // Estado interno para esta modal
 
     const modal = getEl('geneticsSelectorModal');
     modal.innerHTML = `
-        <div class="w-11/12 md:w-full max-w-2xl p-6 rounded-lg shadow-lg flex flex-col max-h-[90vh]">
+        <div class="w-11/12 md:w-full max-w-3xl p-6 rounded-lg shadow-lg flex flex-col max-h-[90vh]">
             <h2 class="text-2xl font-bold mb-4 text-amber-400">Definir Genéticas del Ciclo</h2>
             
             <div class="mb-4 border-b border-gray-300 dark:border-gray-700">
@@ -283,13 +274,13 @@ export function openGeneticsSelectorModal(allGenetics, allSeeds, onConfirm) {
     const semillasContent = getEl('selectorContentSemillas');
     const summaryContainer = getEl('selector-summary');
 
-    const updateSelection = (item, quantity, isChecked) => {
-        const existingIndex = currentSelection.findIndex(s => s.id === item.id && s.source === item.source);
+    const updateSelectionState = (itemData, isChecked) => {
+        const existingIndex = currentSelection.findIndex(s => s.id === itemData.id && s.source === itemData.source);
         if (isChecked) {
-            if (existingIndex > -1) {
-                currentSelection[existingIndex].quantity = quantity;
+            if (existingIndex === -1) {
+                currentSelection.push(itemData);
             } else {
-                currentSelection.push({ ...item, quantity });
+                 currentSelection[existingIndex] = itemData;
             }
         } else {
             if (existingIndex > -1) {
@@ -298,7 +289,7 @@ export function openGeneticsSelectorModal(allGenetics, allSeeds, onConfirm) {
         }
         renderSummary();
     };
-    
+
     const renderSummary = () => {
         summaryContainer.innerHTML = '';
         if (currentSelection.length === 0) {
@@ -307,7 +298,8 @@ export function openGeneticsSelectorModal(allGenetics, allSeeds, onConfirm) {
         }
         currentSelection.forEach(item => {
             const summaryItem = document.createElement('p');
-            summaryItem.innerHTML = `<strong class="text-amber-500">${item.quantity}x</strong> ${item.name} <span class="text-xs">(${item.source})</span>`;
+            const trackingText = item.trackIndividually ? ' (Individual)' : ' (Grupo)';
+            summaryItem.innerHTML = `<strong class="text-amber-500">${item.quantity}x</strong> ${item.name} <span class="text-xs">${trackingText}</span>`;
             summaryContainer.appendChild(summaryItem);
         });
     };
@@ -315,37 +307,51 @@ export function openGeneticsSelectorModal(allGenetics, allSeeds, onConfirm) {
     const createListItem = (item, source) => {
         const stock = source === 'clone' ? item.cloneStock : item.quantity;
         const div = document.createElement('div');
-        div.className = 'flex items-center justify-between p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800';
+        div.className = 'grid grid-cols-12 gap-4 items-center p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800';
         div.innerHTML = `
-            <div class="flex items-center gap-3">
-                <input type="checkbox" data-id="${item.id}" data-source="${source}" class="h-5 w-5 rounded text-amber-500 focus:ring-amber-500 selector-checkbox">
-                <div>
-                    <p class="font-semibold">${item.name}</p>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">Disponibles: ${stock || 0}</p>
-                </div>
+            <div class="col-span-1 flex items-center">
+                <input type="checkbox" class="h-5 w-5 rounded text-amber-500 focus:ring-amber-500 selector-checkbox">
             </div>
-            <div class="flex items-center gap-2">
+            <div class="col-span-5">
+                <p class="font-semibold">${item.name}</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">Disponibles: ${stock || 0}</p>
+            </div>
+            <div class="col-span-3 flex items-center gap-2">
                 <label class="text-sm">Cant:</label>
-                <input type="number" min="1" max="${stock || 0}" value="1" disabled class="w-20 p-1 rounded-md selector-quantity">
+                <input type="number" min="1" max="${stock || 0}" value="1" disabled class="w-full p-1 rounded-md selector-quantity">
+            </div>
+            <div class="col-span-3 flex items-center justify-end">
+                 <label class="flex items-center gap-2 text-xs cursor-pointer">
+                    <input type="checkbox" disabled class="h-4 w-4 rounded text-amber-500 focus:ring-amber-500 selector-individual-checkbox">
+                    Individual
+                </label>
             </div>
         `;
-        const checkbox = div.querySelector('.selector-checkbox');
+        const mainCheckbox = div.querySelector('.selector-checkbox');
         const quantityInput = div.querySelector('.selector-quantity');
+        const individualCheckbox = div.querySelector('.selector-individual-checkbox');
 
-        checkbox.addEventListener('change', (e) => {
+        const handleUpdate = () => {
+            const itemData = { 
+                id: item.id, 
+                name: item.name, 
+                source,
+                quantity: parseInt(quantityInput.value) || 1,
+                trackIndividually: individualCheckbox.checked
+            };
+            updateSelectionState(itemData, mainCheckbox.checked);
+        };
+
+        mainCheckbox.addEventListener('change', (e) => {
             const isChecked = e.target.checked;
             quantityInput.disabled = !isChecked;
-            if (isChecked) {
-                quantityInput.focus();
-            }
-            const itemData = { id: item.id, name: item.name, source };
-            updateSelection(itemData, parseInt(quantityInput.value), isChecked);
+            individualCheckbox.disabled = !isChecked;
+            if (isChecked) quantityInput.focus();
+            handleUpdate();
         });
         
-        quantityInput.addEventListener('change', () => {
-             const itemData = { id: item.id, name: item.name, source };
-             updateSelection(itemData, parseInt(quantityInput.value), checkbox.checked);
-        });
+        quantityInput.addEventListener('input', handleUpdate);
+        individualCheckbox.addEventListener('change', handleUpdate);
 
         return div;
     };
@@ -353,20 +359,15 @@ export function openGeneticsSelectorModal(allGenetics, allSeeds, onConfirm) {
     allGenetics.forEach(g => clonesContent.appendChild(createListItem(g, 'clone')));
     allSeeds.forEach(s => semillasContent.appendChild(createListItem(s, 'seed')));
 
-    // Lógica de Pestañas
     const tabClonesBtn = getEl('selectorTabClones');
     const tabSemillasBtn = getEl('selectorTabSemillas');
     tabClonesBtn.addEventListener('click', () => {
-        tabClonesBtn.classList.add('border-amber-400');
-        tabSemillasBtn.classList.remove('border-amber-400');
-        clonesContent.classList.remove('hidden');
-        semillasContent.classList.add('hidden');
+        tabClonesBtn.classList.add('border-amber-400'); tabSemillasBtn.classList.remove('border-amber-400');
+        clonesContent.classList.remove('hidden'); semillasContent.classList.add('hidden');
     });
     tabSemillasBtn.addEventListener('click', () => {
-        tabSemillasBtn.classList.add('border-amber-400');
-        tabClonesBtn.classList.remove('border-amber-400');
-        semillasContent.classList.remove('hidden');
-        clonesContent.classList.add('hidden');
+        tabSemillasBtn.classList.add('border-amber-400'); tabClonesBtn.classList.remove('border-amber-400');
+        semillasContent.classList.remove('hidden'); clonesContent.classList.add('hidden');
     });
 
     getEl('cancelGeneticsSelector').addEventListener('click', () => modal.style.display = 'none');
@@ -376,8 +377,6 @@ export function openGeneticsSelectorModal(allGenetics, allSeeds, onConfirm) {
     });
 }
 
-// ... (El resto de ui.js no necesita cambios, por lo que se omite por brevedad pero estaría aquí)
-// (He incluido el resto del archivo para cumplir con la solicitud de no omitir nada)
 export function openLogModal(ciclo, week, log = null) {
     const title = 'Añadir Registro';
     const content = `
@@ -674,6 +673,17 @@ export function renderCicloDetails(ciclo, handlers) {
     else if(ciclo.phase === 'Vegetativo' && diffDaysVege !== null) statusText = `Día ${diffDaysVege} de vegetativo.`;
     else if(ciclo.phase === 'Floración' && diffDaysFlora !== null) statusText = `Día ${diffDaysFlora} de floración.`;
 
+    // MODIFICADO: Añadida la sección "Genéticas en Cultivo"
+    const geneticsListHTML = (ciclo.genetics && ciclo.genetics.length > 0)
+        ? ciclo.genetics.map(g => `
+            <li class="flex items-center gap-2 p-2 rounded-md bg-gray-100 dark:bg-gray-800">
+                <span class="text-amber-500 font-bold">${g.quantity > 1 ? `${g.quantity}x` : '1x'}</span>
+                <span class="text-gray-800 dark:text-gray-200">${g.name}</span>
+                <span class="text-xs px-2 py-0.5 rounded-full ${g.source === 'clone' ? 'bg-blue-200 text-blue-800' : 'bg-green-200 text-green-800'}">${g.source}</span>
+            </li>
+          `).join('')
+        : '<p class="text-sm text-gray-500 dark:text-gray-400 italic">No hay genéticas definidas para este ciclo.</p>';
+
     const html = `
         <div data-ciclo-id="${ciclo.id}">
             <header class="flex justify-between items-start mb-6">
@@ -683,13 +693,20 @@ export function renderCicloDetails(ciclo, handlers) {
                 </div>
                 <button id="backToCiclosBtn" class="btn-secondary btn-base py-2 px-4 rounded-lg">Volver</button>
             </header>
+            
+            <div class="my-6 p-4 card rounded-lg">
+                <h3 class="text-lg font-semibold mb-3 text-gray-800 dark:text-gray-200">Genéticas en Cultivo</h3>
+                <ul class="space-y-2">
+                    ${geneticsListHTML}
+                </ul>
+            </div>
+
             <div id="timeline-container" class="my-2"></div>
             <main>
                 ${actionButtonsHTML}
             </main>
         </div>
     `;
-
     setTimeout(() => {
         document.querySelectorAll('.add-log-for-week-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
