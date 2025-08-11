@@ -1629,6 +1629,7 @@ export function initializeEventListeners(handlers) {
     menuAddSalaLink.addEventListener('click', (e) => { e.preventDefault(); handlers.openSalaModal(); getEl('dropdownMenu').classList.add('hidden'); });
     
     getEl('menuAddCiclo').addEventListener('click', (e) => { e.preventDefault(); handlers.openCicloModal(null, null, null, handlers); getEl('dropdownMenu').classList.add('hidden'); });
+    getEl('menuSetupWizard').addEventListener('click', (e) => { e.preventDefault(); handlers.openSetupWizard(); getEl('dropdownMenu').classList.add('hidden'); });
     getEl('menuTools').addEventListener('click', (e) => { e.preventDefault(); handlers.showToolsView(); getEl('dropdownMenu').classList.add('hidden'); });
     getEl('menuSettings').addEventListener('click', (e) => { e.preventDefault(); handlers.showSettingsView(); getEl('dropdownMenu').classList.add('hidden'); });
     
@@ -2050,4 +2051,61 @@ export function renderBulkStep2(names) {
     getEl('bulk-step-1-next').classList.add('hidden');
     getEl('bulk-step-2-back').classList.remove('hidden');
     getEl('bulk-step-2-save').classList.remove('hidden');
+}
+export function openSetupWizardModal(handlers) {
+    const modal = getEl('setupWizardModal');
+    
+    const modalContent = `
+        <div class="w-11/12 md:w-full max-w-4xl p-6 rounded-lg shadow-lg flex flex-col max-h-[90vh]">
+            <h2 id="wizard-modal-title" class="text-2xl font-bold mb-4 text-amber-400">Configuración Rápida - Paso 1: Salas</h2>
+            
+            <div id="wizard-step-1">
+                <p class="text-sm text-gray-500 dark:text-gray-400 mb-3">Introduce los nombres de tus salas de cultivo (ej: Carpa 1x1, Indoor Vege, Balcón), una por línea.</p>
+                <textarea id="wizard-salas-textarea" rows="8" class="w-full p-2 rounded-md font-mono text-sm" placeholder="Carpa 1x1\nIndoor Vege\n..."></textarea>
+            </div>
+
+            <div id="wizard-step-2" class="hidden flex-grow overflow-y-auto pr-2">
+                <div class="flex justify-between items-center mb-3">
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Define los ciclos activos. Puedes añadir más filas según necesites.</p>
+                    <button type="button" id="wizard-add-ciclo-row" class="btn-secondary btn-base text-sm py-1 px-3 rounded-md">+ Añadir Ciclo</button>
+                </div>
+                <div id="wizard-ciclos-container" class="space-y-2"></div>
+            </div>
+
+            <div class="flex justify-end gap-4 mt-6 pt-4 border-t border-gray-300 dark:border-gray-600">
+                <button type="button" id="cancelWizardBtn" class="btn-secondary btn-base py-2 px-4 rounded-lg">Cancelar</button>
+                <button type="button" id="wizard-step-1-next" class="btn-primary btn-base py-2 px-4 rounded-lg">Siguiente: Crear Ciclos</button>
+                <button type="button" id="wizard-step-2-save" class="btn-primary btn-base py-2 px-4 rounded-lg hidden">Guardar y Finalizar</button>
+            </div>
+        </div>
+    `;
+
+    modal.innerHTML = modalContent;
+    modal.style.display = 'flex';
+
+    getEl('cancelWizardBtn').addEventListener('click', () => modal.style.display = 'none');
+    getEl('wizard-step-1-next').addEventListener('click', handlers.handleWizardStep1Next);
+    getEl('wizard-step-2-save').addEventListener('click', handlers.handleWizardSaveAll);
+    getEl('wizard-add-ciclo-row').addEventListener('click', () => renderWizardCicloRow(null, handlers.getAllSalas()));
+}
+
+export function renderWizardCicloRow(ciclo = {}, allSalas = []) {
+    const container = getEl('wizard-ciclos-container');
+    const row = document.createElement('div');
+    row.className = 'wizard-ciclo-row p-2 rounded-md grid grid-cols-12 gap-2 bg-gray-50 dark:bg-gray-800';
+
+    const salaOptions = allSalas.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+    const today = new Date().toISOString().split('T')[0];
+
+    row.innerHTML = `
+        <input type="text" class="p-1 rounded-md col-span-12 md:col-span-4 wizard-ciclo-name" placeholder="Nombre del Ciclo">
+        <select class="p-1 rounded-md col-span-6 md:col-span-3 wizard-ciclo-sala">${salaOptions}</select>
+        <select class="p-1 rounded-md col-span-6 md:col-span-2 wizard-ciclo-phase">
+            <option value="Vegetativo">Vegetativo</option>
+            <option value="Floración">Floración</option>
+        </select>
+        <input type="date" value="${today}" class="p-1 rounded-md col-span-10 md:col-span-2 wizard-ciclo-date">
+        <button type="button" class="col-span-2 md:col-span-1 btn-danger btn-base flex items-center justify-center rounded-md" onclick="this.parentElement.remove()">×</button>
+    `;
+    container.appendChild(row);
 }

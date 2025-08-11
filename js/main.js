@@ -22,8 +22,10 @@ import {
     openPhenoEditModal as uiOpenPhenoEditModal,
     openAddToCatalogModal as uiOpenAddToCatalogModal,
     openPromoteToGeneticModal,
-    openBulkAddModal as uiOpenBulkAddModal, // Asegúrate que esta línea esté
-    renderBulkStep2
+    openBulkAddModal as uiOpenBulkAddModal, 
+    renderBulkStep2,
+    openSetupWizardModal as uiOpenSetupWizardModal,
+    renderWizardCicloRow
 } from './ui.js';
 import { startMainTour, startToolsTour } from './onboarding.js';
 
@@ -477,7 +479,103 @@ const handlers = {
     openBulkAddModal: () => {
         uiOpenBulkAddModal(handlers);
     },
+    getAllSalas: () => currentSalas,
 
+    openSetupWizard: () => {
+        uiOpenSetupWizardModal(handlers);
+    },
+
+    handleWizardStep1Next: async () => {
+        const textarea = getEl('wizard-salas-textarea');
+        const salaNames = textarea.value.split('\n').map(s => s.trim()).filter(s => s !== '');
+
+        if (salaNames.length > 0) {
+            const batch = writeBatch(db);
+            const salasRef = collection(db, `users/${userId}/salas`);
+            salaNames.forEach((name, index) => {
+                const newSalaRef = doc(salasRef);
+                batch.set(newSalaRef, { name: name, position: (currentSalas.length || 0) + index });
+            });
+            try {
+                await batch.commit();
+                showNotification(`${salaNames.length} sala(s) creadas con éxito.`);
+                // Forzamos la recarga de salas para que el estado se actualice antes de pasar al paso 2
+                loadSalas(); 
+            } catch (error) {
+                console.error("Error creando salas en masa:", error);
+                showNotification('Error al crear las salas.', 'error');
+                return;
+            }
+        }
+
+        // Cambiar la vista del modal al paso 2
+        getEl('wizard-modal-title').textContent = 'Configuración Rápida - Paso 2: Ciclos';
+        getEl('wizard-step-1').classList.add('hidden');
+        getEl('wizard-step-2').classList.remove('hidden');
+        getEl('wizard-step-1-next').classList.add('hidden');
+        getEl('wizard-step-2-save').classList.remove('hidden');
+
+        // Añadimos una primera fila por defecto para guiar al usuario
+        if (getEl('wizard-ciclos-container').childElementCount === 0) {
+            renderWizardCicloRow(null, currentSalas);
+        }
+    },
+
+    handleWizardSaveAll: async () => {
+        const rows = document.querySelectorAll('.wizard-ciclo-row');
+        if (rows.length === 0) {
+            getEl('setupWizardModal').style.display = 'none';
+            return;
+        }
+
+        const batch = writeBatch(db);
+        const ciclosRef = collection(db, `users/${userId}/ciclos`);
+        let ciclosCreados = 0;
+
+        rows.forEach(row => {
+            const name = row.querySelector('.wizard-ciclo-name').value.trim();
+            const salaId = row.querySelector('.wizard-ciclo-sala').value;
+            const phase = row.querySelector('.wizard-ciclo-phase').value;
+            const date = row.querySelector('.wizard-ciclo-date').value;
+
+            if (!name || !salaId || !date) {
+                return; // Omitir filas incompletas
+            }
+            
+            const cicloData = {
+                name: name,
+                salaId: salaId,
+                phase: phase,
+                estado: 'activo',
+                genetics: [],
+                vegetativeStartDate: phase === 'Vegetativo' ? date : null,
+                floweringStartDate: phase === 'Floración' ? date : null,
+                cultivationType: 'Sustrato', // Valor por defecto
+            };
+
+            if (phase === 'Floración') {
+                cicloData.floweringWeeks = generateStandardWeeks();
+            }
+
+            const newCicloRef = doc(ciclosRef);
+            batch.set(newCicloRef, cicloData);
+            ciclosCreados++;
+        });
+
+        if (ciclosCreados === 0) {
+            showNotification('Rellena los datos de al menos un ciclo para guardar.', 'error');
+            return;
+        }
+
+        try {
+            await batch.commit();
+            showNotification(`${ciclosCreados} ciclo(s) creados con éxito.`, 'success');
+            getEl('setupWizardModal').style.display = 'none';
+        } catch (error) {
+            console.error("Error guardando ciclos en masa:", error);
+            showNotification('Error al guardar los ciclos.', 'error');
+        }
+    },
     handleBulkStep1Next: () => {
         const textarea = getEl('bulk-names-textarea');
         const names = textarea.value
