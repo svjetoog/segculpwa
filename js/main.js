@@ -273,18 +273,10 @@ function loadSalas() {
         currentSalas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         currentSalas.sort((a, b) => (a.position || 0) - (b.position || 0));
 
-        if (sortableSalas) sortableSalas.destroy();
-        if (searchInput && searchInput.value) {
-            const searchTerm = searchInput.value.toLowerCase();
-            const filteredSalas = currentSalas.filter(sala => sala.name.toLowerCase().includes(searchTerm));
-            renderSalasGrid(filteredSalas, currentCiclos, handlers);
-        } else {
-            renderSalasGrid(currentSalas, currentCiclos, handlers);
-        }
-        initializeDragAndDrop();
+        // Ya no intentamos renderizar la grilla de salas desde aquí,
+        // porque el dashboard es la vista principal.
+        // También eliminamos toda la lógica del 'searchInput'.
         
-        startMainTour();
-
     }, error => {
         console.error("Error loading salas:", error);
         getEl('loadingSalas').innerText = "Error al cargar las salas.";
@@ -2009,17 +2001,17 @@ onAuthStateChanged(auth, async user => {
         loadGenetics();
         loadPhenohunts();
         loadHistorial();
-        loadCiclos(); // Cargamos ciclos
-        loadSalas();    // Y salas.
+        loadCiclos();
+        loadSalas();
 
-        // Una vez que el usuario está logueado, mostramos el dashboard.
-        // NOTA: Para que los datos aparezcan, podríamos necesitar un pequeño delay o un sistema de promesas.
-        // Por ahora, lo llamamos directamente.
+        // Pequeño delay para dar tiempo a que los datos iniciales carguen antes de mostrar el dashboard.
         setTimeout(() => {
             handlers.showDashboard();
-        }, 250); // Un pequeño delay para dar tiempo a que los datos iniciales carguen.
+        }, 250);
 
-        initializeEventListeners(handlers); // Inicializa listeners globales
+        initializeEventListeners(handlers); // Inicializa listeners globales de modales, etc.
+
+        // Listener global para cerrar menús contextuales
         window.addEventListener('click', (e) => {
             if (!e.target.closest('.ciclo-item-container')) {
                 document.querySelectorAll('.ciclo-actions-menu').forEach(menu => {
