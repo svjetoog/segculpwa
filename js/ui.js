@@ -2094,15 +2094,15 @@ export function renderWizardCicloRow(ciclo = {}, allSalas = []) {
     `;
     container.appendChild(row);
 }
-export function renderDashboard(stats, recentActivity, curingJars) {
+export function renderDashboard(stats, recentActivity, curingJars, handlers) {
     const appContainer = getEl('app');
     if (!appContainer) return;
 
-    appContainer.innerHTML = ''; // Limpiamos la vista anterior
+    appContainer.innerHTML = ''; // Limpiamos la vista anterior para evitar duplicados
 
     // --- INICIO DE FUNCIONES AUXILIARES DENTRO DE RENDER ---
     const getTimeElapsed = (startDate) => {
-        if (!startDate) return 'Fecha inválida';
+        if (!startDate || !startDate.toDate) return 'Fecha inválida';
         const start = startDate.toDate();
         const now = new Date();
         const diffTime = Math.abs(now - start);
@@ -2115,7 +2115,7 @@ export function renderDashboard(stats, recentActivity, curingJars) {
     };
 
     const getCuringStageOpacities = (startDate) => {
-        if (!startDate) return { initial: 'opacity-40', optimal: 'opacity-40', extended: 'opacity-40' };
+        if (!startDate || !startDate.toDate) return { initial: 'opacity-40', optimal: 'opacity-40', extended: 'opacity-40' };
         const start = startDate.toDate();
         const now = new Date();
         const diffTime = Math.abs(now - start);
@@ -2130,17 +2130,41 @@ export function renderDashboard(stats, recentActivity, curingJars) {
         }
     };
 
+    const statsHTML = stats.map(stat => `
+        <div class="flex items-start gap-4">
+            <div class="p-3 rounded-lg bg-${stat.color}-500/20">
+                ${stat.icon}
+            </div>
+            <div>
+                <p class="text-sm text-gray-400">${stat.label}</p>
+                <p class="text-2xl font-bold text-gray-100">${stat.value}</p>
+            </div>
+        </div>
+    `).join('');
+    
+    const recentActivityHTML = recentActivity.length > 0
+        ? recentActivity.map(item => `
+        <li class="flex items-center gap-4">
+            <div class="text-2xl">${item.icon}</div>
+            <div class="flex-grow">
+                <p class="font-semibold text-gray-200">${item.description} en "${item.cicloName}"</p>
+                <p class="text-sm text-gray-400">${item.timeAgo}</p>
+            </div>
+        </li>
+    `).join('')
+        : `<p class="text-center text-sm text-gray-400 dark:text-gray-500 py-4">No hay actividad reciente.</p>`;
+
     const curingJarsHTML = curingJars.length > 0
         ? curingJars.map(jar => {
             const opacities = getCuringStageOpacities(jar.fechaInicioCurado);
-            const geneticsNames = jar.snapshot_genetics.map(g => g.phenoName || g.name).join(', ');
+            const geneticsNames = (jar.snapshot_genetics || []).map(g => g.phenoName || g.name).join(', ');
             return `
             <div>
                 <div class="flex justify-between items-center text-sm mb-2">
-                    <span class="font-semibold truncate" title="${geneticsNames}">${jar.name}</span>
+                    <span class="font-semibold truncate text-gray-200" title="${geneticsNames}">${jar.name}</span>
                     <span class="font-mono font-semibold text-amber-400">${getTimeElapsed(jar.fechaInicioCurado)}</span>
                 </div>
-                <div class="flex w-full h-2 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700">
+                <div class="flex w-full h-2 rounded-full overflow-hidden bg-gray-700">
                     <div class="cure-bar-segment w-1/3 bg-amber-400 ${opacities.initial}" title="Etapa Inicial (< 3 sem)"></div>
                     <div class="cure-bar-segment w-1/3 bg-emerald-400 ${opacities.optimal}" title="Etapa Óptima (3 sem - 2 meses)"></div>
                     <div class="cure-bar-segment w-1/3 bg-violet-400 ${opacities.extended}" title="Etapa Extendida (> 2 meses)"></div>
@@ -2153,33 +2177,85 @@ export function renderDashboard(stats, recentActivity, curingJars) {
 
     const dashboardHTML = `
         <div class="max-w-7xl mx-auto">
-            {...} // Mantenemos todo el HTML del header sin cambios
+             <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8">
+                <div>
+                    <h1 class="text-3xl font-mono tracking-wider font-bold text-amber-400">Dashboard</h1>
+                    <p id="welcomeUser" class="text-gray-500 dark:text-gray-400 mt-1">Resumen de tu cultivo.</p>
+                </div>
+                <div class="relative mt-4 sm:mt-0 self-end sm:self-auto flex items-center gap-2">
+                     <button id="aboutBtn" class="btn-secondary btn-base py-2 px-4 rounded-lg shadow-md">
+                        ¿Qué onda esto?
+                    </button>
+                    <button id="menuBtn" class="btn-primary btn-base p-2 rounded-lg shadow-md">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                        </svg>
+                    </button>
+                    <div id="dropdownMenu" class="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-[#262626] border border-gray-200 dark:border-[#404040] rounded-md shadow-lg z-20 hidden">
+                        <a href="#" id="menuAddSala" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#404040]">Añadir Sala</a>
+                        <a href="#" id="menuAddCiclo" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#404040]">Añadir Ciclo</a>
+                        <a href="#" id="menuSetupWizard" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#404040]">Configuración Rápida</a>
+                        <a href="#" id="menuTools" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#404040]">Herramientas</a>
+                        <a href="#" id="menuSettings" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#404040]">Ajustes</a>
+                        <a href="#" id="logoutBtn" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#404040]">Cerrar Sesión</a>
+                    </div>
+                </div>
+            </header>
             
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 
-                {...} // Mantenemos el Widget "Mi Cultivo" sin cambios
-
-                <div class="widget p-6">
-                    <h2 class="text-xl font-bold text-amber-400 mb-4">Mis Frascos en Curado</h2>
-                    <div class="space-y-5">
-                        ${curingJarsHTML}
+                <div class="lg:col-span-2 space-y-6">
+                    <div class="widget p-6">
+                        <h2 class="text-xl font-bold text-amber-400 mb-4">Estadísticas Generales</h2>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                            ${statsHTML}
+                        </div>
                     </div>
-                    ${curingJars.length > 0 ? `<a href="#" id="navigateToCuringJars" class="block text-center text-amber-400 text-sm font-semibold pt-4 hover:underline">Ver todos...</a>` : ''}
+                    <div class="widget p-6">
+                        <h2 class="text-xl font-bold text-amber-400 mb-4">Actividad Reciente</h2>
+                        <ul class="space-y-4">
+                           ${recentActivityHTML}
+                        </ul>
+                    </div>
+                     <div class="widget p-6">
+                        <div class="flex justify-between items-center mb-4">
+                             <h2 class="text-xl font-bold text-amber-400">Mis Salas</h2>
+                             <a href="#" id="navigateToSalas" class="text-amber-400 text-sm font-semibold hover:underline">Ir a la vista de salas →</a>
+                        </div>
+                        <div id="salasGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4">
+                             <p class="text-center text-sm text-gray-400 dark:text-gray-500 col-span-full">Cargando salas...</p>
+                        </div>
+                    </div>
                 </div>
 
-                {...} // Mantenemos el Widget "Comunidad" con su mensaje de "Próximamente"
+                <div class="lg:col-span-1 space-y-6">
+                     <div class="widget p-6">
+                        <h2 class="text-xl font-bold text-amber-400 mb-4">Mis Frascos en Curado</h2>
+                        <div class="space-y-5">
+                            ${curingJarsHTML}
+                        </div>
+                        ${curingJars.length > 0 ? `<a href="#" id="navigateToCuringJars" class="block text-center text-amber-400 text-sm font-semibold pt-4 hover:underline">Ver todos...</a>` : ''}
+                    </div>
+
+                    <div class="widget p-6">
+                        <h2 class="text-xl font-bold text-amber-400 mb-4">Comunidad</h2>
+                        <p class="text-center text-sm text-gray-400 dark:text-gray-500 py-8">Próximamente: compartí tus resultados y aprendé de otros cultivadores.</p>
+                    </div>
+                </div>
             </div>
         </div>
     `;
     
     appContainer.innerHTML = dashboardHTML;
 
-    // Listener para el nuevo enlace "Ver todos..."
+    // Renderizar las salas dentro del dashboard
+    renderSalasGrid(handlers.getAllSalas(), [], handlers);
+
+    // Listener para el nuevo enlace "Ver todos..." de los frascos
     const navigateToCuringJars = getEl('navigateToCuringJars');
     if (navigateToCuringJars) {
         navigateToCuringJars.addEventListener('click', (e) => {
             e.preventDefault();
-            // Lógica para navegar a la herramienta y abrir la pestaña correcta
             handlers.showToolsView();
             setTimeout(() => handlers.switchToolsTab('curingJars'), 50);
         });

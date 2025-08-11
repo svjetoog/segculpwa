@@ -265,21 +265,24 @@ function initializeToolsDragAndDrop() {
 
 function loadSalas() {
     if (!userId) return;
-    getEl('loadingSalas').style.display = 'block';
-    getEl('emptySalasState').style.display = 'none';
-    const q = query(collection(db, `users/${userId}/salas`));
+    // Ya no manipulamos los loaders de la vista de salas, el dashboard se encarga
+    const q = query(collection(db, `users/${userId}/salas`), orderBy("position")); // Añadido orderBy para consistencia
     if (salasUnsubscribe) salasUnsubscribe();
     salasUnsubscribe = onSnapshot(q, (snapshot) => {
         currentSalas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        currentSalas.sort((a, b) => (a.position || 0) - (b.position || 0));
-
-        // Ya no intentamos renderizar la grilla de salas desde aquí,
-        // porque el dashboard es la vista principal.
-        // También eliminamos toda la lógica del 'searchInput'.
+        
+        // Si el dashboard está visible, volvemos a renderizar la grilla de salas dentro de él.
+        const appView = getEl('app');
+        if (appView && !appView.classList.contains('hidden')) {
+            const ciclosActivos = currentCiclos.filter(c => c.estado !== 'finalizado');
+            renderSalasGrid(currentSalas, ciclosActivos, handlers);
+            initializeDragAndDrop(); // Re-inicializamos D&D para las salas
+        }
         
     }, error => {
         console.error("Error loading salas:", error);
-        getEl('loadingSalas').innerText = "Error al cargar las salas.";
+        const salasGrid = getEl('salasGrid');
+        if(salasGrid) salasGrid.innerHTML = `<p class="text-red-500">Error al cargar las salas.</p>`;
     });
 }
 
@@ -478,107 +481,108 @@ const handlers = {
         uiOpenSetupWizardModal(handlers);
     },
     showDashboard: async () => {
-    handlers.hideAllViews();
-    const appView = getEl('app');
-    appView.classList.remove('hidden');
-    appView.classList.add('view-container');
+        handlers.hideAllViews();
+        const appView = getEl('app');
+        appView.classList.remove('hidden');
+        appView.classList.add('view-container');
 
-    // 1. Calcular Estadísticas
-    const stats = [
-        { 
-            label: 'Ciclos Activos', 
-            value: currentCiclos.length,
-            icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h5M20 20v-5h-5" /><path stroke-linecap="round" stroke-linejoin="round" d="M4 9a9 9 0 0114.65-5.35L20 5" /><path stroke-linecap="round" stroke-linejoin="round" d="M20 15a9 9 0 01-14.65 5.35L4 19" /></svg>`,
-            color: 'amber'
-        },
-        { 
-            label: 'Clones en Stock', 
-            value: currentGenetics.reduce((sum, g) => sum + (g.cloneStock || 0), 0),
-            icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7v8a2 2 0 002 2h4M8 7a2 2 0 012-2h4a2 2 0 012 2v8a2 2 0 01-2 2h-4a2 2 0 01-2-2V7z" /></svg>`,
-            color: 'cyan'
-        }
-    ];
-
-    // 2. Obtener Actividad Reciente (aquí usaremos una consulta más avanzada)
-const recentActivity = [];
-    try {
-        const logsQuery = query(
-            collectionGroup(db, 'logs'), 
-            where('__name__', '>=', `users/${userId}/`), // Limita la búsqueda solo a los logs del usuario actual
-            orderBy('date', 'desc'), 
-            limit(3)
-        );
-        const logsSnapshot = await getDocs(logsQuery);
-
-        // Función auxiliar para formatear el tiempo transcurrido
-        const formatTimeAgo = (date) => {
-            const now = new Date();
-            const seconds = Math.floor((now - date) / 1000);
-            let interval = seconds / 31536000;
-            if (interval > 1) return `hace ${Math.floor(interval)} años`;
-            interval = seconds / 2592000;
-            if (interval > 1) return `hace ${Math.floor(interval)} meses`;
-            interval = seconds / 86400;
-            if (interval > 1) return `hace ${Math.floor(interval)} días`;
-            interval = seconds / 3600;
-            if (interval > 1) return `hace ${Math.floor(interval)} horas`;
-            interval = seconds / 60;
-            if (interval > 1) return `hace ${Math.floor(interval)} minutos`;
-            return 'hace unos segundos';
-        };
-
-        // Función auxiliar para formatear la descripción del log
-        const formatLog = (log) => {
-            switch (log.type) {
-                case 'Riego': return { icon: '💧', description: 'Riego' + (log.fertilizers && log.fertilizers.length > 0 ? ' con fertis' : '') };
-                case 'Cambio de Solución': return { icon: '💧', description: 'Cambio de Solución' };
-                case 'Control de Plagas': return { icon: '🐞', description: 'Control de Plagas' };
-                case 'Podas': return { icon: '✂️', description: `Poda (${log.podaType})` };
-                default: return { icon: '📝', description: log.type };
+        // 1. Calcular Estadísticas (sin cambios)
+        const stats = [
+            { 
+                label: 'Ciclos Activos', 
+                value: currentCiclos.length,
+                icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h5M20 20v-5h-5" /><path stroke-linecap="round" stroke-linejoin="round" d="M4 9a9 9 0 0114.65-5.35L20 5" /><path stroke-linecap="round" stroke-linejoin="round" d="M20 15a9 9 0 01-14.65 5.35L4 19" /></svg>`,
+                color: 'amber'
+            },
+            { 
+                label: 'Clones en Stock', 
+                value: currentGenetics.reduce((sum, g) => sum + (g.cloneStock || 0), 0),
+                icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7v8a2 2 0 002 2h4M8 7a2 2 0 012-2h4a2 2 0 012 2v8a2 2 0 01-2 2h-4a2 2 0 01-2-2V7z" /></svg>`,
+                color: 'cyan'
             }
-        };
+        ];
 
-        for (const logDoc of logsSnapshot.docs) {
-            const logData = logDoc.data();
-            const cicloId = logDoc.ref.parent.parent.id; // Obtenemos el ID del ciclo padre del log
-            const ciclo = currentCiclos.find(c => c.id === cicloId);
-            
-            if (ciclo) {
-                const formattedLog = formatLog(logData);
-                recentActivity.push({
-                    ...formattedLog,
-                    cicloName: ciclo.name,
-                    timeAgo: formatTimeAgo(logData.date.toDate())
-                });
+        // 2. Obtener Actividad Reciente (sin cambios)
+        const recentActivity = [];
+        try {
+            const logsQuery = query(
+                collectionGroup(db, 'logs'), 
+                where('__name__', '>=', `users/${userId}/`),
+                orderBy('date', 'desc'), 
+                limit(3)
+            );
+            const logsSnapshot = await getDocs(logsQuery);
+
+            const formatTimeAgo = (date) => {
+                const now = new Date();
+                const seconds = Math.floor((now - date) / 1000);
+                let interval = seconds / 31536000;
+                if (interval > 1) return `hace ${Math.floor(interval)} años`;
+                interval = seconds / 2592000;
+                if (interval > 1) return `hace ${Math.floor(interval)} meses`;
+                interval = seconds / 86400;
+                if (interval > 1) return `hace ${Math.floor(interval)} días`;
+                interval = seconds / 3600;
+                if (interval > 1) return `hace ${Math.floor(interval)} horas`;
+                interval = seconds / 60;
+                if (interval > 1) return `hace ${Math.floor(interval)} minutos`;
+                return 'hace unos segundos';
+            };
+
+            const formatLog = (log) => {
+                switch (log.type) {
+                    case 'Riego': return { icon: '💧', description: 'Riego' + (log.fertilizers && log.fertilizers.length > 0 ? ' con fertis' : '') };
+                    case 'Cambio de Solución': return { icon: '💧', description: 'Cambio de Solución' };
+                    case 'Control de Plagas': return { icon: '🐞', description: 'Control de Plagas' };
+                    case 'Podas': return { icon: '✂️', description: `Poda (${log.podaType})` };
+                    default: return { icon: '📝', description: log.type };
+                }
+            };
+
+            for (const logDoc of logsSnapshot.docs) {
+                const logData = logDoc.data();
+                const cicloId = logDoc.ref.parent.parent.id;
+                const ciclo = currentCiclos.find(c => c.id === cicloId);
+                
+                if (ciclo) {
+                    const formattedLog = formatLog(logData);
+                    recentActivity.push({
+                        ...formattedLog,
+                        cicloName: ciclo.name,
+                        timeAgo: formatTimeAgo(logData.date.toDate())
+                    });
+                }
             }
+        } catch (error) {
+            console.error("Error al obtener la actividad reciente:", error);
         }
-    } catch (error) {
-        console.error("Error al obtener la actividad reciente:", error);
-    }    // Esta parte la dejaremos pendiente para conectar con Firebase, por ahora mostramos el array vacío.
-    const curingJars = currentCiclos
-        .filter(c => c.estado === 'en_curado')
-        .sort((a, b) => b.fechaInicioCurado.toDate() - a.fechaInicioCurado.toDate()) // Ordenar por más reciente primero
-        .slice(0, 3);
-    // 3. Renderizar el Dashboard
-    renderDashboard(stats, recentActivity, curingJars);     
-    // 4. Re-asignar listeners a los botones del nuevo header
-    getEl('logoutBtn').addEventListener('click', () => handlers.signOut());
-    getEl('menuBtn').addEventListener('click', (e) => {
-        e.stopPropagation();
-        getEl('dropdownMenu').classList.toggle('hidden');
-    });
-    getEl('menuAddSala').addEventListener('click', (e) => { e.preventDefault(); handlers.openSalaModal(); getEl('dropdownMenu').classList.add('hidden'); });
-    getEl('menuAddCiclo').addEventListener('click', (e) => { e.preventDefault(); handlers.openCicloModal(null, null, null, handlers); getEl('dropdownMenu').classList.add('hidden'); });
-    getEl('menuSetupWizard').addEventListener('click', (e) => { e.preventDefault(); handlers.openSetupWizard(); getEl('dropdownMenu').classList.add('hidden'); });
-    getEl('menuTools').addEventListener('click', (e) => { e.preventDefault(); handlers.showToolsView(); getEl('dropdownMenu').classList.add('hidden'); });
-    getEl('menuSettings').addEventListener('click', (e) => { e.preventDefault(); handlers.showSettingsView(); getEl('dropdownMenu').classList.add('hidden'); });
-    getEl('aboutBtn').addEventListener('click', () => getEl('aboutModal').style.display = 'flex');
-    
-    // Listener para el enlace "Mi Cultivo ->" que te lleva a la vista de salas (aún por crear)
-    getEl('navigateToSalas').addEventListener('click', (e) => {
-        e.preventDefault();
-        // Aquí podríamos llamar a una función que muestre la vista de salas, por ahora un placeholder:
-            showNotification("Vista de Salas próximamente.", "success");
+
+        const curingJars = currentCiclos
+            .filter(c => c.estado === 'en_curado')
+            .sort((a, b) => b.fechaInicioCurado.toDate() - a.fechaInicioCurado.toDate())
+            .slice(0, 3);
+        
+        // 3. Renderizar el Dashboard - MODIFICACIÓN CLAVE
+        // Ahora pasamos `handlers` para que la UI pueda renderizar las salas correctamente.
+        renderDashboard(stats, recentActivity, curingJars, handlers);     
+
+        // 4. Re-asignar listeners a los botones del nuevo header
+        // Este código ahora funcionará porque `renderDashboard` ya creó los botones.
+        getEl('logoutBtn').addEventListener('click', () => handlers.signOut());
+        getEl('menuBtn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            getEl('dropdownMenu').classList.toggle('hidden');
+        });
+        getEl('menuAddSala').addEventListener('click', (e) => { e.preventDefault(); handlers.openSalaModal(); getEl('dropdownMenu').classList.add('hidden'); });
+        getEl('menuAddCiclo').addEventListener('click', (e) => { e.preventDefault(); handlers.openCicloModal(null, currentSalas, null, handlers); getEl('dropdownMenu').classList.add('hidden'); });
+        getEl('menuSetupWizard').addEventListener('click', (e) => { e.preventDefault(); handlers.openSetupWizard(); getEl('dropdownMenu').classList.add('hidden'); });
+        getEl('menuTools').addEventListener('click', (e) => { e.preventDefault(); handlers.showToolsView(); getEl('dropdownMenu').classList.add('hidden'); });
+        getEl('menuSettings').addEventListener('click', (e) => { e.preventDefault(); handlers.showSettingsView(); getEl('dropdownMenu').classList.add('hidden'); });
+        getEl('aboutBtn').addEventListener('click', () => getEl('aboutModal').style.display = 'flex');
+        
+        getEl('navigateToSalas').addEventListener('click', (e) => {
+            e.preventDefault();
+            handlers.showCiclosView(null, null); // Esto mostrará todas las salas
         });
     },
     handleFinishCuring: (cicloId, cicloName) => {
