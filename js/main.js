@@ -1,9 +1,9 @@
 // js/main.js
 import { auth, db } from './firebase.js';
 import { onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updatePassword, deleteUser } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { collection, doc, addDoc, deleteDoc, onSnapshot, query, serverTimestamp, getDocs, writeBatch, updateDoc, arrayUnion, where, increment, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { collection, doc, addDoc, deleteDoc, onSnapshot, query, serverTimestamp, getDocs, writeBatch, updateDoc, arrayUnion, where, increment, getDoc, collectionGroup, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import {
-     getEl, showNotification, renderSalasGrid, createCicloCard, createLogEntry,
+    getEl, showNotification, renderSalasGrid, createCicloCard, createLogEntry,
     renderGeneticsList, renderStockList,
     renderBaulSemillasList,
     renderGeneticsListCompact, renderBaulSemillasListCompact, renderStockListCompact,
@@ -22,10 +22,11 @@ import {
     openPhenoEditModal as uiOpenPhenoEditModal,
     openAddToCatalogModal as uiOpenAddToCatalogModal,
     openPromoteToGeneticModal,
-    openBulkAddModal as uiOpenBulkAddModal, 
-    renderBulkStep2,
+    renderDashboard, // <-- ¡AQUÍ ESTÁ LA FUNCIÓN QUE FALTABA!
+    openBulkAddModal as uiOpenBulkAddModal,
+    renderWizardCicloRow,
     openSetupWizardModal as uiOpenSetupWizardModal,
-    renderWizardCicloRow
+
 } from './ui.js';
 import { startMainTour, startToolsTour } from './onboarding.js';
 
