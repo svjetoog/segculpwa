@@ -873,7 +873,10 @@ export function renderToolsView() {
             </div>
         </div>
         <div id="geneticsContent">
-            <div class="flex justify-end mb-4">
+            <div class="flex justify-end mb-4 gap-2">
+                 <button id="add-bulk-btn" class="btn-secondary btn-base py-2 px-4 rounded-lg">
+                    ⚡ Carga Rápida
+                </button>
                  <button id="add-to-catalog-btn" class="btn-primary btn-base py-2 px-4 rounded-lg">
                     + Añadir al Catálogo
                 </button>
@@ -1975,3 +1978,76 @@ export function openPhenoEditModal(individuo, predefinedTags) {
 
         getEl('cancelPromoteBtn').addEventListener('click', () => modal.style.display = 'none');
     }
+    export function openBulkAddModal(handlers) {
+    const modal = getEl('bulkAddModal');
+    
+    const modalContent = `
+        <div class="w-11/12 md:w-full max-w-4xl p-6 rounded-lg shadow-lg flex flex-col max-h-[90vh]">
+            <h2 id="bulk-modal-title" class="text-2xl font-bold mb-4 text-amber-400">Carga Rápida - Paso 1: Nombres</h2>
+            
+            <div id="bulk-step-1">
+                <p class="text-sm text-gray-500 dark:text-gray-400 mb-3">Escribe o pega el nombre de cada genética en una nueva línea. Puedes diferenciar fenotipos o selecciones en el nombre.</p>
+                <textarea id="bulk-names-textarea" rows="12" class="w-full p-2 rounded-md font-mono text-sm" 
+                          placeholder="Zkittlez (Feno Dulce)\nGorilla Glue #4\nMoby Dick\n..."></textarea>
+            </div>
+
+            <div id="bulk-step-2" class="hidden flex-grow overflow-y-auto pr-2">
+                <p class="text-sm text-gray-500 dark:text-gray-400 mb-3">Ahora, completa los detalles y el stock para cada genética. Los campos son opcionales.</p>
+                <div id="bulk-details-container" class="space-y-3"></div>
+            </div>
+
+            <div id="bulk-modal-footer" class="flex justify-end gap-4 mt-6 pt-4 border-t border-gray-300 dark:border-gray-600">
+                <button type="button" id="cancelBulkAddBtn" class="btn-secondary btn-base py-2 px-4 rounded-lg">Cancelar</button>
+                <button type="button" id="bulk-step-1-next" class="btn-primary btn-base py-2 px-4 rounded-lg">Siguiente: Añadir Detalles</button>
+                <button type="button" id="bulk-step-2-back" class="btn-secondary btn-base py-2 px-4 rounded-lg hidden">Atrás</button>
+                <button type="button" id="bulk-step-2-save" class="btn-primary btn-base py-2 px-4 rounded-lg hidden">Guardar Todo</button>
+            </div>
+        </div>
+    `;
+
+    modal.innerHTML = modalContent;
+    modal.style.display = 'flex';
+
+    getEl('cancelBulkAddBtn').addEventListener('click', () => modal.style.display = 'none');
+    getEl('bulk-step-1-next').addEventListener('click', handlers.handleBulkStep1Next);
+    getEl('bulk-step-2-back').addEventListener('click', handlers.handleBulkStep2Back);
+    getEl('bulk-step-2-save').addEventListener('click', handlers.handleBulkSaveAll);
+}
+export function renderBulkStep2(names) {
+    const container = getEl('bulk-details-container');
+    container.innerHTML = ''; 
+
+    container.innerHTML += `
+        <div class="hidden md:grid grid-cols-12 gap-x-2 text-xs font-bold text-gray-500 dark:text-gray-400 px-2 pb-2 border-b border-gray-200 dark:border-gray-700">
+            <div class="col-span-3">Genética</div>
+            <div class="col-span-1 text-center">Clones</div>
+            <div class="col-span-1 text-center">Semillas</div>
+            <div class="col-span-2">Banco</div>
+            <div class="col-span-3">Parentales</div>
+            <div class="col-span-2">Origen</div>
+        </div>
+    `;
+    
+    names.forEach((name, index) => {
+        const row = document.createElement('div');
+        row.className = 'bulk-details-row p-2 rounded-md grid grid-cols-2 md:grid-cols-12 gap-x-2 gap-y-2 hover:bg-gray-50 dark:hover:bg-gray-800 items-center';
+        row.dataset.index = index;
+        
+        row.innerHTML = `
+            <input type="text" value="${name}" class="p-1 rounded-md col-span-2 md:col-span-3 bulk-input-name" placeholder="Nombre Genética">
+            <input type="number" min="0" class="p-1 rounded-md md:col-span-1 bulk-input-clones text-center" placeholder="0">
+            <input type="number" min="0" class="p-1 rounded-md md:col-span-1 bulk-input-seeds text-center" placeholder="0">
+            <input type="text" class="p-1 rounded-md col-span-2 md:col-span-2 bulk-input-bank" placeholder="Banco (si son semillas)">
+            <input type="text" class="p-1 rounded-md col-span-2 md:col-span-3 bulk-input-parents" placeholder="Parentales">
+            <input type="text" class="p-1 rounded-md col-span-2 md:col-span-2 bulk-input-owner" placeholder="Origen/Dueño (si es clon)">
+        `;
+        container.appendChild(row);
+    });
+
+    getEl('bulk-modal-title').textContent = 'Carga Rápida - Paso 2: Detalles y Stock';
+    getEl('bulk-step-1').classList.add('hidden');
+    getEl('bulk-step-2').classList.remove('hidden');
+    getEl('bulk-step-1-next').classList.add('hidden');
+    getEl('bulk-step-2-back').classList.remove('hidden');
+    getEl('bulk-step-2-save').classList.remove('hidden');
+}

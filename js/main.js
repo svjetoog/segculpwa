@@ -19,9 +19,11 @@ import {
     renderHistorialView,
     renderPhenohuntList,
     renderPhenohuntWorkspace,
-    openPhenoEditModal,
+    openPhenoEditModal as uiOpenPhenoEditModal,
     openAddToCatalogModal as uiOpenAddToCatalogModal,
-    openPromoteToGeneticModal 
+    openPromoteToGeneticModal,
+    openBulkAddModal as uiOpenBulkAddModal, // Asegúrate que esta línea esté
+    renderBulkStep2
 } from './ui.js';
 import { startMainTour, startToolsTour } from './onboarding.js';
 
@@ -471,6 +473,100 @@ const handlers = {
                 getEl('authError').innerText = handleAuthError(error);
                 getEl('authError').classList.remove('hidden');
             });
+    },
+    openBulkAddModal: () => {
+        uiOpenBulkAddModal(handlers);
+    },
+
+    handleBulkStep1Next: () => {
+        const textarea = getEl('bulk-names-textarea');
+        const names = textarea.value
+            .split('\n')
+            .map(name => name.trim())
+            .filter(name => name !== '');
+        
+        if (names.length === 0) {
+            showNotification('Debes introducir al menos un nombre de genética.', 'error');
+            return;
+        }
+        
+        // Usamos Set para obtener nombres únicos y evitar duplicados en el paso 2
+        const uniqueNames = [...new Set(names)];
+        renderBulkStep2(uniqueNames);
+    },
+    
+    handleBulkStep2Back: () => {
+        getEl('bulk-modal-title').textContent = 'Carga Rápida - Paso 1: Nombres';
+        getEl('bulk-step-1').classList.remove('hidden');
+        getEl('bulk-step-2').classList.add('hidden');
+        getEl('bulk-step-1-next').classList.remove('hidden');
+        getEl('bulk-step-2-back').classList.add('hidden');
+        getEl('bulk-step-2-save').classList.add('hidden');
+    },
+
+    handleBulkSaveAll: async () => {
+        const rows = document.querySelectorAll('.bulk-details-row');
+        const batch = writeBatch(db);
+        const geneticsRef = collection(db, `users/${userId}/genetics`);
+        let processedCount = 0;
+
+        try {
+            for (const row of rows) {
+                const name = row.querySelector('.bulk-input-name').value.trim();
+                const cloneStock = parseInt(row.querySelector('.bulk-input-clones').value) || 0;
+                const seedStock = parseInt(row.querySelector('.bulk-input-seeds').value) || 0;
+
+                if (!name || (cloneStock === 0 && seedStock === 0)) {
+                    continue; // Omitir filas sin nombre o sin stock para guardar
+                }
+                
+                processedCount++;
+
+                const q = query(geneticsRef, where("name", "==", name));
+                const querySnapshot = await getDocs(q);
+
+                if (querySnapshot.empty) {
+                    // La genética no existe, la creamos con todos los datos
+                    const newDocData = {
+                        name: name,
+                        cloneStock: cloneStock,
+                        seedStock: seedStock,
+                        isSeedAvailable: seedStock > 0,
+                        bank: row.querySelector('.bulk-input-bank').value.trim() || null,
+                        parents: row.querySelector('.bulk-input-parents').value.trim() || null,
+                        owner: row.querySelector('.bulk-input-owner').value.trim() || null,
+                        favorita: false,
+                        position: (currentGenetics.length || 0) + processedCount
+                    };
+                    const newDocRef = doc(geneticsRef);
+                    batch.set(newDocRef, newDocData);
+                } else {
+                    // La genética ya existe, actualizamos su stock
+                    const existingDocRef = querySnapshot.docs[0].ref;
+                    const updateData = {
+                        cloneStock: increment(cloneStock),
+                        seedStock: increment(seedStock),
+                    };
+                    if (seedStock > 0) {
+                        updateData.isSeedAvailable = true;
+                    }
+                    batch.update(existingDocRef, updateData);
+                }
+            }
+            
+            if (processedCount === 0) {
+                showNotification('No hay datos válidos para guardar.', 'error');
+                return;
+            }
+
+            await batch.commit();
+            getEl('bulkAddModal').style.display = 'none';
+            showNotification(`${processedCount} genéticas guardadas/actualizadas con éxito.`, 'success');
+
+        } catch (error) {
+            console.error("Error en la carga masiva (Paso 2):", error);
+            showNotification("Ocurrió un error al guardar los datos.", "error");
+        }
     },
     getSalaNameById: (salaId) => {
         const sala = currentSalas.find(s => s.id === salaId);
@@ -1093,6 +1189,7 @@ handlePhenoCardUpdate: async (e) => {
             destroyToolSortables();
             handlers.hideToolsView();
         });
+        getEl('add-bulk-btn').addEventListener('click', handlers.openBulkAddModal);
         getEl('add-to-catalog-btn').addEventListener('click', handlers.openAddToCatalogModal);
         getEl('geneticsTabBtn').addEventListener('click', () => handlers.switchToolsTab('genetics'));
         getEl('geneticsTabBtn').addEventListener('click', () => handlers.switchToolsTab('genetics'));
