@@ -1633,7 +1633,6 @@ export function initializeEventListeners(handlers) {
         if (e.target.closest('#cancelSalaBtn')) getEl('salaModal').style.display = 'none';
         if (e.target.closest('#cancelCicloBtn')) getEl('cicloModal').style.display = 'none';
         if (e.target.closest('#cancelLogBtn')) getEl('logModal').style.display = 'none';
-        // NUEVO: Cerrar el modal selector de genéticas
         if (e.target.closest('#cancelGeneticsSelector')) getEl('geneticsSelectorModal').style.display = 'none';
         if (e.target.closest('#cancelMoveCicloBtn')) getEl('moveCicloModal').style.display = 'none';
         if (e.target.closest('#cancelGerminateBtn')) getEl('germinateSeedModal').style.display = 'none';
@@ -1654,17 +1653,95 @@ export function initializeEventListeners(handlers) {
         if (e.target.id === 'germinateSeedForm') handlers.handleGerminateFormSubmit(e);
         if (e.target.id === 'seedForm') handlers.handleSeedFormSubmit(e);
         if (e.target.id === 'phenoEditForm') {
-        // Buscamos el ID del ciclo en el que estamos trabajando
-        const huntId = getEl('phenohuntDetailView').querySelector('[data-hunt-id]').dataset.huntId;
-        e.target.dataset.huntId = huntId;
-        // Llamamos al handler que está en main.js
-        handlers.handlePhenoCardUpdate(e);
+            const huntId = getEl('phenohuntDetailView').querySelector('[data-hunt-id]').dataset.huntId;
+            e.target.dataset.huntId = huntId;
+            handlers.handlePhenoCardUpdate(e);
         }
         if (e.target.id === 'finalizarCicloForm') handlers.handleFinalizarCicloFormSubmit(e);
+
+        // --- BLOQUE AÑADIDO ---
+        if (e.target.id === 'promoteToGeneticForm') {
+            const huntId = getEl('phenohuntDetailView').querySelector('[data-hunt-id]').dataset.huntId;
+            e.target.dataset.huntId = huntId;
+            handlers.handlePromoteToGenetic(e);
+        }
+        // ----------------------
     });
     
     initializeTooltips();
 }
+
+export function openAddToCatalogModal(handlers) {
+    const modal = getEl('cicloModal'); // Reutilizamos un modal existente para mostrarlo
+    
+    const modalContent = `
+        <div class="w-11/12 md:w-full max-w-lg p-6 rounded-lg shadow-lg">
+            <h2 class="text-2xl font-bold mb-6 text-amber-400">Añadir al Catálogo</h2>
+            
+            <div id="catalog-choice-container">
+                <p class="text-gray-600 dark:text-gray-300 mb-4">¿Qué quieres añadir a tu catálogo maestro?</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <button type="button" id="add-choice-seeds" class="btn-secondary btn-base p-6 rounded-lg text-lg flex flex-col items-center gap-2">
+                        🌱
+                        <span>Semillas</span>
+                    </button>
+                    <button type="button" id="add-choice-clone" class="btn-secondary btn-base p-6 rounded-lg text-lg flex flex-col items-center gap-2">
+                        🧬
+                        <span>Nuevo Clon (Cut)</span>
+                    </button>
+                </div>
+            </div>
+
+            <form id="addSeedsForm" class="hidden space-y-4">
+                <h3 class="text-lg font-bold">Añadir Semillas</h3>
+                <input type="text" name="name" placeholder="Nombre de la Genética" required class="w-full p-2 rounded-md">
+                <input type="text" name="bank" placeholder="Banco (Opcional)" class="w-full p-2 rounded-md">
+                <input type="number" name="quantity" placeholder="Cantidad de semillas" required class="w-full p-2 rounded-md">
+                <div class="flex justify-end gap-4 mt-4">
+                    <button type="button" class="btn-secondary btn-base py-2 px-4 rounded-lg cancel-add-btn">Cancelar</button>
+                    <button type="submit" class="btn-primary btn-base py-2 px-4 rounded-lg">Guardar Semillas</button>
+                </div>
+            </form>
+
+            <form id="addCloneForm" class="hidden space-y-4">
+                 <h3 class="text-lg font-bold">Añadir Nuevo Clon (Cut)</h3>
+                 <input type="text" name="name" placeholder="Nombre de la Genética" required class="w-full p-2 rounded-md">
+                 <input type="text" name="parents" placeholder="Parentales (Opcional)" class="w-full p-2 rounded-md">
+                 <input type="text" name="owner" placeholder="Origen / Dueño (Opcional)" class="w-full p-2 rounded-md">
+                 <input type="number" name="quantity" value="1" placeholder="Cantidad de clones" required class="w-full p-2 rounded-md">
+                 <div class="flex justify-end gap-4 mt-4">
+                    <button type="button" class="btn-secondary btn-base py-2 px-4 rounded-lg cancel-add-btn">Cancelar</button>
+                    <button type="submit" class="btn-primary btn-base py-2 px-4 rounded-lg">Guardar Clon</button>
+                </div>
+            </form>
+        </div>
+    `;
+    modal.innerHTML = modalContent;
+    modal.style.display = 'flex';
+
+    // Lógica interna del modal
+    const choiceContainer = getEl('catalog-choice-container');
+    const addSeedsForm = getEl('addSeedsForm');
+    const addCloneForm = getEl('addCloneForm');
+
+    getEl('add-choice-seeds').addEventListener('click', () => {
+        choiceContainer.classList.add('hidden');
+        addSeedsForm.classList.remove('hidden');
+    });
+
+    getEl('add-choice-clone').addEventListener('click', () => {
+        choiceContainer.classList.add('hidden');
+        addCloneForm.classList.remove('hidden');
+    });
+    
+    document.querySelectorAll('.cancel-add-btn').forEach(btn => {
+        btn.addEventListener('click', () => modal.style.display = 'none');
+    });
+
+    addSeedsForm.addEventListener('submit', (e) => handlers.handleAddToCatalogSubmit(e, 'seed'));
+    addCloneForm.addEventListener('submit', (e) => handlers.handleAddToCatalogSubmit(e, 'clone'));
+}
+
 //=================================================================
 // FUNCIÓN 1: Dibuja la lista de cacerías
 //=================================================================

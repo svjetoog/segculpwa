@@ -3,7 +3,7 @@ import { auth, db } from './firebase.js';
 import { onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updatePassword, deleteUser } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { collection, doc, addDoc, deleteDoc, onSnapshot, query, serverTimestamp, getDocs, writeBatch, updateDoc, arrayUnion, where, increment, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import {
-    getEl, showNotification, renderSalasGrid, createCicloCard, createLogEntry,
+     getEl, showNotification, renderSalasGrid, createCicloCard, createLogEntry,
     renderGeneticsList, renderStockList,
     renderBaulSemillasList,
     renderGeneticsListCompact, renderBaulSemillasListCompact, renderStockListCompact,
@@ -12,7 +12,6 @@ import {
     openSalaModal as uiOpenSalaModal,
     openCicloModal as uiOpenCicloModal,
     openLogModal as uiOpenLogModal,
-    // NUEVO: Importamos el nuevo modal selector
     openGeneticsSelectorModal as uiOpenGeneticsSelectorModal,
     openGerminateModal as uiOpenGerminateModal,
     openMoveCicloModal as uiOpenMoveCicloModal,
@@ -20,7 +19,9 @@ import {
     renderHistorialView,
     renderPhenohuntList,
     renderPhenohuntWorkspace,
-    openPhenoEditModal
+    openPhenoEditModal,
+    openAddToCatalogModal as uiOpenAddToCatalogModal,
+    openPromoteToGeneticModal 
 } from './ui.js';
 import { startMainTour, startToolsTour } from './onboarding.js';
 
@@ -480,7 +481,72 @@ openPhenoEditModal: (individuo) => {
     // La constante PHENOHUNT_TAGS la creamos al principio de este paso
     uiOpenPhenoEditModal(individuo, PHENOHUNT_TAGS);
 },
+    openPromoteToGeneticModal: (individuo, originalGeneticId) => {
+    // Buscamos la data original de la genética para heredar el banco/parentales
+    const originalGenetic = currentGenetics.find(g => g.id === originalGeneticId);
+    if (originalGenetic) {
+        openPromoteToGeneticModal(individuo, originalGenetic);
+    } else {
+        showNotification('No se encontró la genética original para heredar los datos.', 'error');
+    }
+},
 
+handlePromoteToGenetic: async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const phenoId = form.dataset.phenoId;
+    const huntId = form.dataset.huntId;
+    const modal = getEl('promoteToGeneticModal');
+
+    const newGeneticData = {
+        name: getEl('promote-name').value.trim(),
+        bank: getEl('promote-bank').value.trim(),
+        parents: getEl('promote-parents').value.trim(),
+        notes: getEl('promote-notes').value.trim(),
+        cloneStock: 1, // Por defecto, al guardarlo, tienes 1 clon (el keeper)
+        seedStock: 0,
+        favorita: true, // Un keeper siempre es favorito por defecto
+        isSeedAvailable: false,
+        position: currentGenetics.length // Se añade al final de la lista
+    };
+
+    if (!newGeneticData.name) {
+        showNotification('El nombre de la nueva genética es obligatorio.', 'error');
+        return;
+    }
+
+    const batch = writeBatch(db);
+
+    try {
+        // 1. Añadimos la nueva genética al catálogo
+        const newGeneticRef = doc(collection(db, `users/${userId}/genetics`));
+        batch.set(newGeneticRef, newGeneticData);
+
+        // 2. Marcamos el fenotipo como "promovido" en el ciclo para evitar duplicados
+        const huntRef = doc(db, `users/${userId}/ciclos`, huntId);
+        const huntDoc = await getDoc(huntRef);
+        if (huntDoc.exists()) {
+            const huntData = huntDoc.data();
+            const updatedGenetics = huntData.genetics.map(individuo => {
+                if (individuo.phenoId === phenoId) {
+                    return { ...individuo, promoted: true }; // Marcamos como promovido
+                }
+                return individuo;
+            });
+            batch.update(huntRef, { genetics: updatedGenetics });
+        }
+
+        // 3. Ejecutamos ambas operaciones
+            await batch.commit();
+
+            showNotification(`¡"${newGeneticData.name}" añadido al catálogo!`, 'success');
+            modal.style.display = 'none';
+
+        } catch (error) {
+            console.error("Error promoviendo fenotipo:", error);
+            showNotification("Error al promover la genética.", "error");
+        }
+    },
 // Este handler es la lógica que se ejecuta cuando guardas el modal
 handlePhenoCardUpdate: async (e) => {
     e.preventDefault();
@@ -582,7 +648,6 @@ handlePhenoCardUpdate: async (e) => {
             });
     },
      openAddToCatalogModal: () => {
-        // Llama a la nueva función de UI que acabamos de crear
         uiOpenAddToCatalogModal(handlers);
     },
 
@@ -1205,24 +1270,29 @@ handlePhenoCardUpdate: async (e) => {
     },
     
     deleteSeed: (id) => {
-        const seed = currentSeeds.find(s => s.id === id);
-        if(seed) {
-            handlers.showConfirmationModal(`¿Seguro que quieres eliminar las semillas "${seed.name}" del baúl?`, async () => {
-                try {
-                    await deleteDoc(doc(db, `users/${userId}/seeds`, id));
-                    showNotification('Semillas eliminadas.');
-                } catch (error) {
-                    console.error("Error deleting seed:", error);
-                    showNotification('Error al eliminar las semillas.', 'error');
-                }
-            });
-        }
+    // CORREGIDO: Busca en currentGenetics en lugar de currentSeeds
+    const seed = currentGenetics.find(s => s.id === id); 
+    if(seed) {
+        handlers.showConfirmationModal(`¿Seguro que quieres eliminar las semillas "${seed.name}" del baúl?`, async () => {
+            try {
+                // La lógica de borrado sigue siendo sobre la genética, pero solo se resetea el stock de semillas.
+                await updateDoc(doc(db, `users/${userId}/genetics`, id), {
+                    seedStock: 0,
+                    isSeedAvailable: false
+                });
+                showNotification('Semillas eliminadas del baúl.');
+            } catch (error) {
+                console.error("Error deleting seed stock:", error);
+                showNotification('Error al eliminar las semillas.', 'error');
+            }
+        });
+      }
     },
     openGerminateModal: (id) => {
-        const seed = currentSeeds.find(s => s.id === id);
-        if(seed) {
+        const seed = currentGenetics.find(s => s.id === id); 
+         if(seed) {
             uiOpenGerminateModal(seed);
-        }
+         }
     },
     handleGerminateFormSubmit: async (e) => {
         e.preventDefault();
