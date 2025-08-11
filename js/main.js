@@ -18,7 +18,9 @@ import {
     openMoveCicloModal as uiOpenMoveCicloModal,
     openFinalizarCicloModal as uiOpenFinalizarCicloModal,
     renderHistorialView,
-    renderPhenohuntList
+    renderPhenohuntList,
+    renderPhenohuntWorkspace,
+    openPhenoEditModal
 } from './ui.js';
 import { startMainTour, startToolsTour } from './onboarding.js';
 
@@ -42,6 +44,13 @@ const PREDEFINED_TAGS = {
 };
 const MAX_CUSTOM_TAGS = 3;
 
+const PHENOHUNT_TAGS = {
+    "Estructura de la Planta": ["Compacta", "Espigada", "Buena Ramificación", "Distancia Internodal Corta", "Distancia Internodal Larga", "Tallo Robusto"],
+    "Perfil de Terpenos": ["Cítrico", "Terroso", "Dulce", "Gassy / Fuel", "Floral", "Frutal", "Pino", "Especiado"],
+    "Producción": ["Baja", "Media", "Alta", "Muy Alta"],
+    "Producción de Resina": ["Baja", "Normal", "Alta", "Ultra Resinosa"],
+    "Resistencia": ["Resistente a Plagas", "Resistente a Hongos", "Sensible"],
+};
 
 // --- 1. FUNCTION DEFINITIONS (LOGIC & DATA) ---
 
@@ -465,6 +474,105 @@ const handlers = {
     getSalaNameById: (salaId) => {
         const sala = currentSalas.find(s => s.id === salaId);
         return sala ? sala.name : 'Desconocida';
+    },
+    // Este handler llama a la función de UI que crea el modal
+openPhenoEditModal: (individuo) => {
+    // La constante PHENOHUNT_TAGS la creamos al principio de este paso
+    uiOpenPhenoEditModal(individuo, PHENOHUNT_TAGS);
+},
+
+// Este handler es la lógica que se ejecuta cuando guardas el modal
+handlePhenoCardUpdate: async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const phenoId = form.dataset.phenoId;
+    const huntId = form.dataset.huntId; // Obtenemos el ID del ciclo
+    const modal = getEl('phenoEditModal');
+
+    // Recolectamos todos los datos del formulario
+    const notes = getEl('pheno-notes').value.trim();
+    const predefinedTags = Array.from(form.querySelectorAll('#predefined-tags-container .tag.active')).map(t => t.textContent);
+    const customTags = Array.from(form.querySelectorAll('#custom-tags-container .tag')).map(t => t.firstChild.textContent);
+
+    // Apuntamos al documento del ciclo en la base de datos
+    const huntRef = doc(db, `users/${userId}/ciclos`, huntId);
+    try {
+        const huntDoc = await getDoc(huntRef);
+        if (!huntDoc.exists()) throw new Error("Ciclo de cacería no encontrado");
+
+        const huntData = huntDoc.data();
+        
+        // Creamos una nueva versión del array de genéticas con nuestro individuo actualizado
+        const updatedGenetics = huntData.genetics.map(individuo => {
+            if (individuo.phenoId === phenoId) {
+                // Actualizamos el individuo con las nuevas notas y etiquetas
+                return { 
+                    ...individuo, 
+                    notes: notes, 
+                    tags: { predefined: predefinedTags, custom: customTags } 
+                };
+            }
+            return individuo;
+        });
+        
+        // Guardamos el array completo de vuelta en la base de datos
+        await updateDoc(huntRef, { genetics: updatedGenetics });
+        showNotification('Evaluación guardada con éxito.');
+        modal.style.display = 'none';
+
+    } catch (error) {
+        console.error("Error guardando evaluación del feno:", error);
+        showNotification("Error al guardar la evaluación.", "error");
+    }
+},
+    showPhenohuntWorkspace: (hunt) => {
+        handlers.hideAllViews();
+        const view = getEl('phenohuntDetailView');
+        renderPhenohuntWorkspace(hunt, handlers);
+        view.classList.remove('hidden');
+        view.classList.add('view-container');
+    },
+
+    hidePhenohuntWorkspace: () => {
+        const view = getEl('phenohuntDetailView');
+        view.classList.add('hidden');
+        view.classList.remove('view-container');
+        // Volvemos a la vista de herramientas, en la pestaña correcta.
+        handlers.showToolsView();
+        handlers.switchToolsTab('phenohunt');
+    },
+
+    handleSetPhenoDecision: async (huntId, phenoId, newDecision) => {
+        const huntRef = doc(db, `users/${userId}/ciclos`, huntId);
+        try {
+            const huntDoc = await getDoc(huntRef);
+            if (!huntDoc.exists()) throw new Error("Ciclo de cacería no encontrado");
+            
+            const huntData = huntDoc.data();
+            let wasChanged = false;
+
+            const updatedGenetics = huntData.genetics.map(individuo => {
+                if (individuo.phenoId === phenoId) {
+                    // Si el usuario vuelve a hacer clic en la misma decisión, la quitamos (vuelve a 'evaluacion')
+                    const finalDecision = individuo.decision === newDecision ? 'evaluacion' : newDecision;
+                    if (individuo.decision !== finalDecision) {
+                        wasChanged = true;
+                    }
+                    return { ...individuo, decision: finalDecision };
+                }
+                return individuo;
+            });
+
+            if (wasChanged) {
+                await updateDoc(huntRef, { genetics: updatedGenetics });
+                showNotification('Decisión guardada.');
+                // onSnapshot se encargará de redibujar la vista automáticamente.
+            }
+
+        } catch (error) {
+            console.error("Error al guardar la decisión del feno:", error);
+            showNotification("Error al guardar la decisión.", "error");
+        }
     },
     handleRegister: (email, password) => {
         createUserWithEmailAndPassword(auth, email, password)
@@ -957,7 +1065,7 @@ const handlers = {
         getEl('app').classList.remove('hidden');
     },
     hideAllViews: () => {
-        ['app', 'ciclosView', 'cicloDetailView', 'toolsView', 'settingsView', 'historialView'].forEach(id => {
+        ['app', 'ciclosView', 'cicloDetailView', 'toolsView', 'settingsView', 'historialView', 'phenohuntDetailView'].forEach(id => {
             const el = getEl(id);
             if (el) {
                 el.classList.add('hidden');

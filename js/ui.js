@@ -1653,56 +1653,319 @@ export function initializeEventListeners(handlers) {
         if (e.target.id === 'moveCicloForm') handlers.handleMoveCicloSubmit(e);
         if (e.target.id === 'germinateSeedForm') handlers.handleGerminateFormSubmit(e);
         if (e.target.id === 'seedForm') handlers.handleSeedFormSubmit(e);
+        if (e.target.id === 'phenoEditForm') {
+        // Buscamos el ID del ciclo en el que estamos trabajando
+        const huntId = getEl('phenohuntDetailView').querySelector('[data-hunt-id]').dataset.huntId;
+        e.target.dataset.huntId = huntId;
+        // Llamamos al handler que está en main.js
+        handlers.handlePhenoCardUpdate(e);
+        }
         if (e.target.id === 'finalizarCicloForm') handlers.handleFinalizarCicloFormSubmit(e);
     });
     
     initializeTooltips();
 }
+//=================================================================
+// FUNCIÓN 1: Dibuja la lista de cacerías
+//=================================================================
 export function renderPhenohuntList(hunts, handlers) {
-    const listContainer = getEl('phenohuntList');
-    if (!listContainer) return;
-    listContainer.innerHTML = '';
+  const listContainer = getEl('phenohuntList');
+  if (!listContainer) return;
+  listContainer.innerHTML = '';
 
-    if (hunts.length === 0) {
-        listContainer.innerHTML = `<p class="text-center text-gray-500 dark:text-gray-400 col-span-full">No tienes cacerías de fenotipos activas. Crea un nuevo ciclo y marca la opción "Phenohunt" para empezar una.</p>`;
-        return;
-    }
+  if (hunts.length === 0) {
+    listContainer.innerHTML = `<p class="text-center text-gray-500 dark:text-gray-400 col-span-full">No tienes cacerías de fenotipos activas. Crea un nuevo ciclo y marca la opción "Phenohunt" para empezar una.</p>`;
+    return;
+  }
 
-    hunts.forEach(hunt => {
-        const card = document.createElement('div');
-        card.className = 'card p-4 flex flex-col justify-between';
-        card.dataset.id = hunt.id;
+  hunts.forEach(hunt => {
+    const card = document.createElement('div');
+    card.className = 'card p-4 flex flex-col justify-between';
+    card.dataset.id = hunt.id;
 
-        // Filtramos para contar solo los individuos reales y no los grupos
-        const individualsCount = hunt.genetics ? hunt.genetics.filter(g => g.phenoId).length : 0;
-        const salaName = handlers.getSalaNameById(hunt.salaId);
+    const individualsCount = hunt.genetics ? hunt.genetics.filter(g => g.phenoId).length : 0;
+    const salaName = handlers.getSalaNameById(hunt.salaId);
 
-        card.innerHTML = `
-            <div>
-                <div class="flex justify-between items-start">
-                    <h3 class="font-bold text-lg text-amber-400">${hunt.name}</h3>
-                    <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-purple-600 text-white">PHENOHUNT</span>
-                </div>
-                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">En sala: <strong>${salaName}</strong></p>
-                <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">Individuos en seguimiento: <strong class="text-amber-400 text-lg">${individualsCount}</strong></p>
+    card.innerHTML = `
+        <div>
+            <div class="flex justify-between items-start">
+                <h3 class="font-bold text-lg text-amber-400">${hunt.name}</h3>
+                <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-purple-600 text-white">PHENOHUNT</span>
             </div>
-            <div class="flex justify-end gap-2 mt-4">
-                <button data-action="open-phenohunt-workspace" data-id="${hunt.id}" class="btn-primary btn-base w-full font-semibold py-2 px-3 rounded-lg text-sm">
-                    Abrir Mesa de Trabajo
-                </button>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">En sala: <strong>${salaName}</strong></p>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">Individuos en seguimiento: <strong class="text-amber-400 text-lg">${individualsCount}</strong></p>
+        </div>
+        <div class="flex justify-end gap-2 mt-4">
+            <button data-action="open-phenohunt-workspace" data-id="${hunt.id}" class="btn-primary btn-base w-full font-semibold py-2 px-3 rounded-lg text-sm">
+                Abrir Mesa de Trabajo
+            </button>
+        </div>
+    `;
+    
+    card.querySelector('[data-action="open-phenohunt-workspace"]').addEventListener('click', (e) => {
+        const huntData = hunts.find(h => h.id === e.currentTarget.dataset.id);
+        if (huntData) {
+            handlers.showPhenohuntWorkspace(huntData);
+        }
+    });
+
+    listContainer.appendChild(card);
+  });
+} // <-- FIN DE LA FUNCIÓN renderPhenohuntList
+
+
+//=================================================================
+// FUNCIÓN 2: Dibuja una tarjeta de fenotipo (es una ayudante, no necesita 'export')
+//=================================================================
+function createPhenoCard(individuo, hunt) {
+  const decision = individuo.decision || 'evaluacion'; 
+
+  const isKeeper = decision === 'keeper';
+  const isDiscard = decision === 'discard';
+
+  const promoteButtonHTML = isKeeper ? `
+      <button data-action="promote-keeper" data-hunt-id="${hunt.id}" data-pheno-id="${individuo.phenoId}" class="btn-primary btn-base w-full mt-2 py-2 rounded-lg text-sm font-semibold animate-pulse">
+          ⭐ Promover a Genética
+      </button>
+  ` : '';
+
+  return `
+      <div class="card p-4 flex flex-col justify-between" data-pheno-id="${individuo.phenoId}">
+          <div>
+              <h4 class="font-bold text-lg text-amber-400">${individuo.name}</h4>
+              
+              <div class="flex justify-around items-center my-4 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+                  <button 
+                      data-hunt-id="${hunt.id}" data-pheno-id="${individuo.phenoId}" data-decision="keeper"
+                      class="pheno-decision-btn flex-1 py-2 px-2 text-sm rounded-md transition-colors ${isKeeper ? 'bg-green-500 text-white font-bold shadow' : 'hover:bg-gray-200 dark:hover:bg-gray-700'}">
+                      Keeper ⭐
+                  </button>
+                  <button 
+                      data-hunt-id="${hunt.id}" data-pheno-id="${individuo.phenoId}" data-decision="discard"
+                      class="pheno-decision-btn flex-1 py-2 px-2 text-sm rounded-md transition-colors ${isDiscard ? 'bg-red-500 text-white font-bold shadow' : 'hover:bg-gray-200 dark:hover:bg-gray-700'}">
+                      Descarte 🗑️
+                  </button>
+              </div>
+
+              <div class="text-xs text-gray-500 dark:text-gray-400 space-y-2 mt-3 h-16">
+                  <p><i>Aquí se mostrarán las notas y etiquetas...</i></p>
+              </div>
+          </div>
+
+          <div class="mt-4">
+              <button data-action="edit-pheno" data-hunt-id="${hunt.id}" data-pheno-id="${individuo.phenoId}" class="btn-secondary btn-base w-full py-2 rounded-lg text-sm">
+                  Añadir/Ver Notas
+              </button>
+              ${promoteButtonHTML}
+          </div>
+      </div>
+  `;
+} // <-- FIN DE LA FUNCIÓN createPhenoCard
+
+
+//=================================================================
+// FUNCIÓN 3: Dibuja la Mesa de Trabajo completa
+//=================================================================
+export function renderPhenohuntWorkspace(hunt, handlers) {
+  const view = getEl('phenohuntDetailView');
+  if (!view) return;
+
+  const individuals = hunt.genetics.filter(g => g.phenoId);
+
+  // Se crean las tarjetas para cada planta
+  const cardsHTML = individuals.map(individuo => createPhenoCard(individuo, hunt)).join('');
+
+  // Se construye el HTML completo de la vista
+  const html = `
+    <header class="flex justify-between items-start mb-6" data-hunt-id="${hunt.id}">
+        <div>
+            <h2 class="text-3xl font-bold text-amber-400 font-mono tracking-wider">${hunt.name}</h2>
+            <p class="text-gray-500 dark:text-gray-400">Mesa de Trabajo de Phenohunt</p>
+        </div>
+        <button id="backToToolsBtn" class="btn-secondary btn-base py-2 px-4 rounded-lg">Volver</button>
+    </header>
+    <main>
+        <div id="pheno-cards-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            ${cardsHTML}
+        </div>
+    </main>
+  `;
+
+  view.innerHTML = html;
+
+  // --- LISTENERS PARA TODOS LOS BOTONES ---
+
+  // Botón para volver a la lista de herramientas
+  view.querySelector('#backToToolsBtn').addEventListener('click', handlers.hidePhenohuntWorkspace);
+  
+  // Botones de decisión (Keeper/Descarte)
+  view.querySelectorAll('.pheno-decision-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+          const { huntId, phenoId, decision } = e.currentTarget.dataset;
+          handlers.handleSetPhenoDecision(huntId, phenoId, decision);
+      });
+  });
+
+  // Botón para editar notas y etiquetas
+  view.querySelectorAll('[data-action="edit-pheno"]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+          const phenoId = e.currentTarget.dataset.phenoId;
+          const individuo = hunt.genetics.find(g => g.phenoId === phenoId);
+          if (individuo) {
+              handlers.openPhenoEditModal(individuo);
+          }
+      });
+  });
+    
+  // ¡AQUÍ ESTÁ EL LISTENER QUE FALTABA!
+  // Botón para promover un "Keeper"
+  view.querySelectorAll('[data-action="promote-keeper"]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+          const phenoId = e.currentTarget.dataset.phenoId;
+          const individuo = hunt.genetics.find(g => g.phenoId === phenoId);
+          if (individuo) {
+              // Pasamos el individuo y su ID de genética original para heredar los datos
+              handlers.openPromoteToGeneticModal(individuo, individuo.id);
+          }
+      });
+  });
+}
+export function openPhenoEditModal(individuo, predefinedTags) {
+        const modal = getEl('phenoEditModal');
+        const title = `Evaluar: ${individuo.name}`;
+        
+        // Carga los datos existentes para mostrarlos en el modal
+        const currentNotes = individuo.notes || '';
+        const currentPredefinedTags = individuo.tags?.predefined || [];
+        const currentCustomTags = individuo.tags?.custom || [];
+    
+        // Crea el HTML para las etiquetas predefinidas
+        let tagsHTML = '';
+        Object.entries(predefinedTags).forEach(([category, tags]) => {
+            tagsHTML += `<div class="mb-3">
+                <h4 class="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-2">${category}</h4>
+                <div class="flex flex-wrap gap-2">
+                    ${tags.map(tag => `<button type="button" class="tag tag-standard ${currentPredefinedTags.includes(tag) ? 'active' : ''}">${tag}</button>`).join('')}
+                </div>
+            </div>`;
+        });
+    
+        const content = `
+            <div class="space-y-4">
+                <div>
+                    <label for="pheno-notes" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Notas del Fenotipo</label>
+                    <textarea id="pheno-notes" rows="4" class="w-full p-2 rounded-md">${currentNotes}</textarea>
+                </div>
+                <hr class="border-gray-300 dark:border-gray-600">
+                <div>
+                    <h3 class="text-lg font-medium text-gray-800 dark:text-gray-200 mb-2">Etiquetas de Evaluación</h3>
+                    <div id="predefined-tags-container">${tagsHTML}</div>
+                </div>
+                <div>
+                    <h3 class="text-lg font-medium text-gray-800 dark:text-gray-200 mb-2">Etiquetas Personalizadas</h3>
+                    <div id="custom-tags-container" class="flex flex-wrap gap-2 mb-2">
+                        ${currentCustomTags.map(tag => `<span class="tag tag-custom flex items-center gap-1">${tag}<button type="button" class="font-bold remove-custom-tag-btn">&times;</button></span>`).join('')}
+                    </div>
+                    <div id="add-custom-tag-container" class="flex gap-2 items-center">
+                        <input type="text" id="custom-tag-input" placeholder="Escribe y presiona Enter..." class="flex-grow p-2 rounded-md" maxlength="30">
+                    </div>
+                </div>
             </div>
         `;
-
-        /*
-        // Dejamos esto preparado para el Paso 3
-        card.querySelector('[data-action="open-phenohunt-workspace"]').addEventListener('click', (e) => {
-            const huntData = hunts.find(h => h.id === e.currentTarget.dataset.id);
-            if (huntData) {
-                handlers.showPhenohuntWorkspace(huntData);
+    
+        // Reutiliza la función que ya tienes para crear el marco del modal
+        modal.innerHTML = createModalHTML('phenoEditModalContent', title, 'phenoEditForm', content, 'Guardar Cambios', 'cancelPhenoEditBtn');
+        
+        modal.style.display = 'flex';
+        
+        // Lógica para que el modal funcione
+        const form = getEl('phenoEditForm');
+        form.dataset.phenoId = individuo.phenoId;
+    
+        getEl('predefined-tags-container').addEventListener('click', (e) => {
+            if (e.target.classList.contains('tag')) {
+                e.target.classList.toggle('active');
             }
         });
-        */
+    
+        const customTagInput = getEl('custom-tag-input');
+        const customTagsContainer = getEl('custom-tags-container');
+    
+        const addCustomTag = () => {
+            const value = customTagInput.value.trim();
+            if (value) {
+                const tagEl = document.createElement('span');
+                tagEl.className = 'tag tag-custom flex items-center gap-1';
+                tagEl.innerHTML = `${value}<button type="button" class="font-bold remove-custom-tag-btn">&times;</button>`;
+                customTagsContainer.appendChild(tagEl);
+                customTagInput.value = '';
+            }
+        };
+        
+        customTagInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') { e.preventDefault(); addCustomTag(); }});
+        
+        customTagsContainer.addEventListener('click', (e) => {
+            if (e.target.classList.contains('remove-custom-tag-btn')) {
+                e.target.parentElement.remove();
+            }
+        });
+        
+        getEl('cancelPhenoEditBtn').addEventListener('click', () => modal.style.display = 'none');
+    } 
+    export function openPromoteToGeneticModal(individuo, originalGenetic) {
+        const modal = getEl('promoteToGeneticModal');
+        const title = `Promover: ${individuo.name}`;
+    
+        // 1. Preparamos el nombre sugerido
+        const suggestedName = `${originalGenetic.name} (${individuo.name.split('#')[1] ? 'Feno #' + individuo.name.split('#')[1].trim() : 'Selección'})`;
+    
+        // 2. Formateamos las notas y etiquetas para un resumen claro
+        let summary = `Ficha de Selección para: ${individuo.name}\n`;
+        summary += `--------------------------------------\n\n`;
+        
+        if (individuo.tags?.predefined?.length > 0) {
+            summary += `ETIQUETAS DE EVALUACIÓN:\n`;
+            summary += individuo.tags.predefined.join(', ') + '\n\n';
+        }
+        if (individuo.tags?.custom?.length > 0) {
+            summary += `ETIQUETAS PERSONALIZADAS:\n`;
+            summary += individuo.tags.custom.join(', ') + '\n\n';
+        }
+        if (individuo.notes) {
+            summary += `NOTAS ADICIONALES:\n`;
+            summary += individuo.notes;
+        }
+    
+        const content = `
+            <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Estás a punto de añadir este fenotipo como una nueva entrada permanente en tu Catálogo de Genéticas.</p>
+            <div class="space-y-4">
+                <div>
+                    <label for="promote-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nombre de la Nueva Genética</label>
+                    <input type="text" id="promote-name" class="w-full p-2 rounded-md" value="${suggestedName}">
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label for="promote-bank" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Banco</label>
+                        <input type="text" id="promote-bank" class="w-full p-2 rounded-md" value="${originalGenetic.bank || ''}">
+                    </div>
+                    <div>
+                        <label for="promote-parents" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Parentales</label>
+                        <input type="text" id="promote-parents" class="w-full p-2 rounded-md" value="${originalGenetic.parents || ''}">
+                    </div>
+                </div>
+                <div>
+                    <label for="promote-notes" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Notas / Ficha de Selección</label>
+                    <textarea id="promote-notes" rows="8" class="w-full p-2 rounded-md text-xs font-mono">${summary}</textarea>
+                </div>
+            </div>
+        `;
+    
+        modal.innerHTML = createModalHTML('promoteToGeneticModalContent', title, 'promoteToGeneticForm', content, 'Añadir al Catálogo', 'cancelPromoteBtn');
+        
+        modal.style.display = 'flex';
+        
+        const form = getEl('promoteToGeneticForm');
+        form.dataset.phenoId = individuo.phenoId;
 
-        listContainer.appendChild(card);
-    });
-}
+        getEl('cancelPromoteBtn').addEventListener('click', () => modal.style.display = 'none');
+    }
