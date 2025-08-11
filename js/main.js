@@ -637,6 +637,8 @@ const handlers = {
         view.classList.remove('hidden');
         view.classList.add('view-container');
 
+        getEl('backToSalasBtn').addEventListener('click', handlers.hideCiclosView);
+
         getEl('salaNameHeader').innerText = `Sala: ${salaName}`;
         const ciclosGrid = getEl('ciclosGrid');
         ciclosGrid.innerHTML = '';

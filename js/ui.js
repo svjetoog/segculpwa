@@ -1532,8 +1532,6 @@ export function initializeEventListeners(handlers) {
     getEl('menuTools').addEventListener('click', (e) => { e.preventDefault(); handlers.showToolsView(); getEl('dropdownMenu').classList.add('hidden'); });
     getEl('menuSettings').addEventListener('click', (e) => { e.preventDefault(); handlers.showSettingsView(); getEl('dropdownMenu').classList.add('hidden'); });
     
-    getEl('backToSalasBtn').addEventListener('click', handlers.hideCiclosView);
-
     document.body.addEventListener('click', (e) => {
         if (e.target.closest('#cancelSalaBtn')) getEl('salaModal').style.display = 'none';
         if (e.target.closest('#cancelCicloBtn')) getEl('cicloModal').style.display = 'none';
