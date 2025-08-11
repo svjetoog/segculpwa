@@ -1054,89 +1054,110 @@ const handlers = {
         }
     },
     handleLogFormSubmit: async (e) => {
-        e.preventDefault();
-        const form = e.target;
-        const cicloId = form.dataset.cicloId;
-        const week = form.dataset.week;
+    e.preventDefault();
+    const form = e.target;
+    const cicloId = form.dataset.cicloId;
+    const week = form.dataset.week;
 
-        const logData = {
-            type: getEl('logType').value,
-            date: serverTimestamp(),
-            week: parseInt(week)
-        };
-        
-        let firstFertilizerLine = null;
+    const logData = {
+        type: getEl('logType').value,
+        date: serverTimestamp(),
+        week: parseInt(week)
+    };
+    
+    let firstFertilizerLine = null;
 
-        if (logData.type === 'Riego' || logData.type === 'Cambio de Solución') {
-            logData.ph = getEl('log-ph').value || null;
-            logData.ec = getEl('log-ec').value || null;
-            if (logData.type === 'Cambio de Solución') {
-                logData.litros = getEl('log-litros').value || null;
-            }
-
-            const fertilizersUsed = [];
-            document.querySelectorAll('.fert-line-block').forEach((block, index) => {
-                const selectedLine = block.querySelector('.fert-line-select').value;
-
-                if (index === 0 && selectedLine) {
-                    firstFertilizerLine = selectedLine;
-                }
-                
-                if (selectedLine === 'Personalizada') {
-                    block.querySelectorAll('.custom-fert-row').forEach(row => {
-                        const productName = row.querySelector('.fert-product-name').value.trim();
-                        const dose = row.querySelector('.fert-dose').value;
-                        if (productName && dose) {
-                            fertilizersUsed.push({
-                                productName: productName,
-                                dose: parseFloat(dose),
-                                unit: row.querySelector('.fert-unit').value
-                            });
-                        }
-                    });
-                } else {
-                    block.querySelectorAll('.product-row').forEach(row => {
-                        const dose = row.querySelector('.fert-dose').value;
-                        if (dose) {
-                            fertilizersUsed.push({
-                                productName: row.querySelector('.fert-dose').dataset.productName,
-                                dose: parseFloat(dose),
-                                unit: row.querySelector('.fert-unit').value
-                            });
-                        }
-                    });
-                }
-            });
-            logData.fertilizers = fertilizersUsed;
-
-        } else if (logData.type === 'Control de Plagas') {
-            logData.notes = getEl('plagas-notes').value.trim();
-        } else if (logData.type === 'Podas') {
-            logData.podaType = getEl('podaType').value;
-            if (logData.podaType === 'Clones') {
-                logData.clonesCount = parseInt(getEl('clones-count').value) || 0;
-            }
-        } else if (logData.type === 'Trasplante') {
-            logData.details = getEl('trasplante-details').value.trim();
+    if (logData.type === 'Riego' || logData.type === 'Cambio de Solución') {
+        logData.ph = getEl('log-ph').value || null;
+        logData.ec = getEl('log-ec').value || null;
+        if (logData.type === 'Cambio de Solución') {
+            logData.litros = getEl('log-litros').value || null;
         }
 
-        try {
-            await addDoc(collection(db, `users/${userId}/ciclos/${cicloId}/logs`), logData);
+        const fertilizersUsed = [];
+        document.querySelectorAll('.fert-line-block').forEach((block, index) => {
+            const selectedLine = block.querySelector('.fert-line-select').value;
 
-            if (firstFertilizerLine) {
-                const cicloRef = doc(db, `users/${userId}/ciclos`, cicloId);
-                await updateDoc(cicloRef, {
-                    lastUsedFertilizerLine: firstFertilizerLine
+            if (index === 0 && selectedLine) {
+                firstFertilizerLine = selectedLine;
+            }
+            
+            if (selectedLine === 'Personalizada') {
+                block.querySelectorAll('.custom-fert-row').forEach(row => {
+                    const productName = row.querySelector('.fert-product-name').value.trim();
+                    const dose = row.querySelector('.fert-dose').value;
+                    if (productName && dose) {
+                        fertilizersUsed.push({
+                            productName: productName,
+                            dose: parseFloat(dose),
+                            unit: row.querySelector('.fert-unit').value
+                        });
+                    }
+                });
+            } else {
+                block.querySelectorAll('.product-row').forEach(row => {
+                    const dose = row.querySelector('.fert-dose').value;
+                    if (dose) {
+                        fertilizersUsed.push({
+                            productName: row.querySelector('.fert-dose').dataset.productName,
+                            dose: parseFloat(dose),
+                            unit: row.querySelector('.fert-unit').value
+                        });
+                    }
                 });
             }
+        });
+        logData.fertilizers = fertilizersUsed;
 
-            showNotification('Registro añadido.');
-            getEl('logModal').style.display = 'none';
-        } catch (error) {
-            console.error("Error guardando log:", error);
-            showNotification('Error al guardar el registro.', 'error');
+    } else if (logData.type === 'Control de Plagas') {
+        logData.notes = getEl('plagas-notes').value.trim();
+    } else if (logData.type === 'Podas') {
+        logData.podaType = getEl('podaType').value;
+        if (logData.podaType === 'Clones') {
+            logData.clonesCount = parseInt(getEl('clones-count').value) || 0;
         }
-    },
+    } else if (logData.type === 'Trasplante') {
+        logData.details = getEl('trasplante-details').value.trim();
+    }
+
+    try {
+        // Iniciar un batch de escritura
+        const batch = writeBatch(db);
+
+        // 1. Referencia al ciclo principal que vamos a actualizar
+        const cicloRef = doc(db, `users/${userId}/ciclos`, cicloId);
+
+        // 2. Referencia al nuevo documento de log que vamos a crear
+        const newLogRef = doc(collection(db, `users/${userId}/ciclos/${cicloId}/logs`));
+
+        // 3. Añadir la creación del nuevo log al batch
+        batch.set(newLogRef, logData);
+
+        // 4. Preparar el objeto con los datos para actualizar el ciclo principal
+        const cycleUpdateData = {
+            lastLogTimestamp: serverTimestamp(), // Campo nuevo
+            lastLogType: logData.type,         // Campo nuevo
+            logCount: increment(1)             // Campo nuevo que incrementa el contador en 1
+        };
+        
+        // Si se usó una línea de fertilizantes, la añadimos a los datos de actualización
+        if (firstFertilizerLine) {
+            cycleUpdateData.lastUsedFertilizerLine = firstFertilizerLine;
+        }
+
+        // 5. Añadir la actualización del ciclo al batch
+        batch.update(cicloRef, cycleUpdateData);
+
+        // 6. Ejecutar ambas operaciones (crear log y actualizar ciclo) de forma atómica
+        await batch.commit();
+
+        showNotification('Registro añadido.');
+        getEl('logModal').style.display = 'none';
+    } catch (error) {
+        console.error("Error guardando log y actualizando ciclo:", error);
+        showNotification('Error al guardar el registro.', 'error');
+    }
+},
     deleteLog: (cicloId, logId) => {
         handlers.showConfirmationModal('¿Seguro que quieres eliminar este registro?', async () => {
             try {
