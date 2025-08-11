@@ -853,6 +853,8 @@ export function renderToolsView() {
                 <button id="geneticsTabBtn" class="py-4 px-1 border-b-2 font-medium text-lg text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:border-gray-400 dark:hover:border-gray-300 whitespace-nowrap btn-base">Genéticas</button>
                 <button id="stockTabBtn" class="py-4 px-1 border-b-2 font-medium text-lg text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:border-gray-400 dark:hover:border-gray-300 whitespace-nowrap btn-base">Stock Clones</button>
                 <button id="baulSemillasTabBtn" class="py-4 px-1 border-b-2 font-medium text-lg text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:border-gray-400 dark:hover:border-gray-300 whitespace-nowrap btn-base">Baúl de Semillas</button>
+                {/* --- NUEVO: Pestaña de Phenohunting --- */}
+                <button id="phenohuntTabBtn" class="py-4 px-1 border-b-2 font-medium text-lg text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:border-gray-400 dark:hover:border-gray-300 whitespace-nowrap btn-base">Phenohunting</button>
                 <button id="historialTabBtn" class="py-4 px-1 border-b-2 font-medium text-lg text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:border-gray-400 dark:hover:border-gray-300 whitespace-nowrap btn-base">Historial</button>
             </nav>
         </div>
@@ -886,6 +888,12 @@ export function renderToolsView() {
         <div id="baulSemillasContent" class="hidden">
             <div id="baulSemillasList" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 </div>
+        </div>
+        {/* --- NUEVO: Contenedor para el contenido de Phenohunting --- */}
+        <div id="phenohuntContent" class="hidden">
+            <div id="phenohuntList" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                 <p class="text-center text-gray-500 dark:text-gray-400 col-span-full">Cargando cacerías activas...</p>
+            </div>
         </div>
         <div id="historialContent" class="hidden">
             <div class="flex flex-col md:flex-row gap-8">
@@ -1651,4 +1659,52 @@ export function initializeEventListeners(handlers) {
     });
     
     initializeTooltips();
+}
+export function renderPhenohuntList(hunts, handlers) {
+    const listContainer = getEl('phenohuntList');
+    if (!listContainer) return;
+    listContainer.innerHTML = '';
+
+    if (hunts.length === 0) {
+        listContainer.innerHTML = `<p class="text-center text-gray-500 dark:text-gray-400 col-span-full">No tienes cacerías de fenotipos activas. Crea un nuevo ciclo y marca la opción "Phenohunt" para empezar una.</p>`;
+        return;
+    }
+
+    hunts.forEach(hunt => {
+        const card = document.createElement('div');
+        card.className = 'card p-4 flex flex-col justify-between';
+        card.dataset.id = hunt.id;
+
+        // Filtramos para contar solo los individuos reales y no los grupos
+        const individualsCount = hunt.genetics ? hunt.genetics.filter(g => g.phenoId).length : 0;
+        const salaName = handlers.getSalaNameById(hunt.salaId);
+
+        card.innerHTML = `
+            <div>
+                <div class="flex justify-between items-start">
+                    <h3 class="font-bold text-lg text-amber-400">${hunt.name}</h3>
+                    <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-purple-600 text-white">PHENOHUNT</span>
+                </div>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">En sala: <strong>${salaName}</strong></p>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">Individuos en seguimiento: <strong class="text-amber-400 text-lg">${individualsCount}</strong></p>
+            </div>
+            <div class="flex justify-end gap-2 mt-4">
+                <button data-action="open-phenohunt-workspace" data-id="${hunt.id}" class="btn-primary btn-base w-full font-semibold py-2 px-3 rounded-lg text-sm">
+                    Abrir Mesa de Trabajo
+                </button>
+            </div>
+        `;
+
+        /*
+        // Dejamos esto preparado para el Paso 3
+        card.querySelector('[data-action="open-phenohunt-workspace"]').addEventListener('click', (e) => {
+            const huntData = hunts.find(h => h.id === e.currentTarget.dataset.id);
+            if (huntData) {
+                handlers.showPhenohuntWorkspace(huntData);
+            }
+        });
+        */
+
+        listContainer.appendChild(card);
+    });
 }

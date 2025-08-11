@@ -17,14 +17,15 @@ import {
     openGerminateModal as uiOpenGerminateModal,
     openMoveCicloModal as uiOpenMoveCicloModal,
     openFinalizarCicloModal as uiOpenFinalizarCicloModal,
-    renderHistorialView
+    renderHistorialView,
+    renderPhenohuntList
 } from './ui.js';
 import { startMainTour, startToolsTour } from './onboarding.js';
 
 // --- STATE MANAGEMENT ---
 let userId = null;
-let salasUnsubscribe = null, ciclosUnsubscribe = null, logsUnsubscribe = null, geneticsUnsubscribe = null, seedsUnsubscribe = null, historialUnsubscribe = null;
-let currentSalas = [], currentCiclos = [], currentGenetics = [], currentSeeds = [], currentHistorial = [];
+let salasUnsubscribe = null, ciclosUnsubscribe = null, logsUnsubscribe = null, geneticsUnsubscribe = null, seedsUnsubscribe = null, historialUnsubscribe = null, phenohuntUnsubscribe = null;
+let currentSalas = [], currentCiclos = [], currentGenetics = [], currentSeeds = [], currentHistorial = [], currentPhenohunts = [];
 let currentSalaId = null, currentSalaName = null;
 let confirmCallback = null;
 let activeToolsTab = 'genetics';
@@ -317,6 +318,21 @@ function loadGenetics() {
     });
 }
 
+function loadPhenohunts() {
+    if (!userId) return;
+    const q = query(collection(db, `users/${userId}/ciclos`), where("isPhenohunt", "==", true), where("estado", "==", "activo"));
+    if (phenohuntUnsubscribe) phenohuntUnsubscribe();
+    phenohuntUnsubscribe = onSnapshot(q, (snapshot) => {
+        currentPhenohunts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        if (activeToolsTab === 'phenohunt') {
+             renderPhenohuntList(currentPhenohunts, handlers);
+        }
+    }, error => {
+        console.error("Error loading phenohunts:", error);
+        const listContainer = getEl('phenohuntList');
+        if(listContainer) listContainer.innerHTML = `<p class="text-red-500">Error al cargar las cacerías.</p>`
+    });
+}
 
 function loadHistorial() {
     if (!userId) return;
@@ -445,6 +461,10 @@ const handlers = {
                 getEl('authError').innerText = handleAuthError(error);
                 getEl('authError').classList.remove('hidden');
             });
+    },
+    getSalaNameById: (salaId) => {
+        const sala = currentSalas.find(s => s.id === salaId);
+        return sala ? sala.name : 'Desconocida';
     },
     handleRegister: (email, password) => {
         createUserWithEmailAndPassword(auth, email, password)
@@ -905,6 +925,7 @@ const handlers = {
         getEl('geneticsTabBtn').addEventListener('click', () => handlers.switchToolsTab('genetics'));
         getEl('stockTabBtn').addEventListener('click', () => handlers.switchToolsTab('stock'));
         getEl('baulSemillasTabBtn').addEventListener('click', () => handlers.switchToolsTab('baulSemillas'));
+        getEl('phenohuntTabBtn').addEventListener('click', () => handlers.switchToolsTab('phenohunt'));
         getEl('historialTabBtn').addEventListener('click', () => handlers.switchToolsTab('historial'));
         getEl('searchTools').addEventListener('input', handlers.handleToolsSearch);
         getEl('view-mode-card').addEventListener('click', () => handlers.handleViewModeToggle('card'));
@@ -946,7 +967,7 @@ const handlers = {
     },
     switchToolsTab: (newTab) => {
         activeToolsTab = newTab;
-        ['genetics', 'stock', 'baulSemillas', 'historial'].forEach(tab => {
+        ['genetics', 'stock', 'baulSemillas', 'phenohunt', 'historial'].forEach(tab => {
             getEl(`${tab}Content`).classList.toggle('hidden', tab !== activeToolsTab);
             getEl(`${tab}TabBtn`).classList.toggle('border-amber-400', tab === activeToolsTab);
             getEl(`${tab}TabBtn`).classList.toggle('border-transparent', tab !== activeToolsTab);
@@ -955,9 +976,6 @@ const handlers = {
         const searchTools = getEl('searchTools');
         const viewMode = getEl('view-mode-toggle');
         const exportBtn = getEl('exportCsvBtn');
-        const geneticsListContainer = getEl('geneticsList');
-        const stockListContainer = getEl('stockList');
-        const baulListContainer = getEl('baulSemillasList');
 
         // Ocultar/mostrar elementos UI según la pestaña
         if (newTab === 'historial') {
@@ -965,7 +983,13 @@ const handlers = {
             viewMode.classList.add('hidden');
             exportBtn.classList.add('hidden');
             renderHistorialView(currentHistorial, handlers);
-        } else {
+        } else if (newTab === 'phenohunt') {
+            searchTools.placeholder = 'Buscar cacería por nombre...';
+            viewMode.classList.add('hidden');
+            exportBtn.classList.add('hidden');
+            renderPhenohuntList(currentPhenohunts, handlers);
+        }
+        else {
             searchTools.placeholder = 'Buscar por nombre...';
             viewMode.classList.remove('hidden'); // Siempre visible para las vistas de inventario
             exportBtn.classList.remove('hidden'); // Siempre visible para las vistas de inventario
@@ -981,6 +1005,7 @@ const handlers = {
                 renderBaulSemillasList(seedItems, handlers);
             }
         }
+        // NOTA: La búsqueda para la nueva pestaña la implementaremos más adelante si es necesario.
         handlers.handleToolsSearch({ target: { value: '' } }); // Resetear búsqueda al cambiar de tab
     },
     handleToolsSearch: (e) => {
@@ -1481,6 +1506,7 @@ onAuthStateChanged(auth, async user => { // Convertimos la función en async
         loadCiclos();
         loadGenetics(); // Este ahora contiene las semillas también
         // loadSeeds(); // Esta función ya no es necesaria
+        loadPhenohunts();
         loadHistorial();
         initializeEventListeners(handlers);
         window.addEventListener('click', (e) => {
@@ -1505,6 +1531,7 @@ onAuthStateChanged(auth, async user => { // Convertimos la función en async
         if (ciclosUnsubscribe) ciclosUnsubscribe();
         if (geneticsUnsubscribe) geneticsUnsubscribe();
         if (seedsUnsubscribe) seedsUnsubscribe(); // Aún es bueno limpiarlo en logout
+        if (phenohuntUnsubscribe) phenohuntUnsubscribe(); 
         if (historialUnsubscribe) historialUnsubscribe();
 
         handlers.hideAllViews();
