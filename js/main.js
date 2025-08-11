@@ -273,7 +273,6 @@ function loadSalas() {
         currentSalas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         currentSalas.sort((a, b) => (a.position || 0) - (b.position || 0));
 
-        const searchInput = getEl('searchSalas');
         if (sortableSalas) sortableSalas.destroy();
         if (searchInput && searchInput.value) {
             const searchTerm = searchInput.value.toLowerCase();
