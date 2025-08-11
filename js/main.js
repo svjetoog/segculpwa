@@ -59,23 +59,33 @@ function exportToCSV(data, filename) {
         showNotification('No hay datos para exportar.', 'error');
         return;
     }
+
     const headers = Object.keys(data[0]);
-    const csvRows = [headers.join(',')];
+    // MODIFICADO: Usamos punto y coma (;) como separador para compatibilidad con Excel en español.
+    const csvRows = [headers.join(';')]; 
+
     for (const row of data) {
         const values = headers.map(header => {
             const escaped = ('' + row[header]).replace(/"/g, '""');
             return `"${escaped}"`;
         });
-        csvRows.push(values.join(','));
+        // MODIFICADO: Usamos punto y coma (;) también para las filas de datos.
+        csvRows.push(values.join(';'));
     }
+
     const csvString = csvRows.join('\n');
-    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+    // MODIFICADO: Añadimos el BOM de UTF-8 (\uFEFF) al principio del string.
+    // Esto le indica a Excel que use la codificación correcta para acentos y caracteres especiales.
+    const blob = new Blob(['\uFEFF' + csvString], { type: 'text/csv;charset=utf-8;' });
+
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = filename;
+
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+
     showNotification('Exportación generada con éxito.');
 }
 
@@ -308,18 +318,6 @@ function loadGenetics() {
     });
 }
 
-function loadSeeds() {
-    if (!userId) return;
-    const q = query(collection(db, `users/${userId}/seeds`));
-    if (seedsUnsubscribe) seedsUnsubscribe();
-    seedsUnsubscribe = onSnapshot(q, (snapshot) => {
-        currentSeeds = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        currentSeeds.sort((a, b) => (a.position || 0) - (b.position || 0));
-        if(!getEl('toolsView').classList.contains('hidden')) {
-            handlers.handleToolsSearch({ target: getEl('searchTools') });
-        }
-    });
-}
 
 function loadHistorial() {
     if (!userId) return;
@@ -365,6 +363,81 @@ function loadLogsForCiclo(cicloId, weekNumbers) {
     });
 }
 
+async function runDataMigration(userId) {
+    const userDocRef = doc(db, 'users', userId);
+    try {
+        const userDoc = await getDoc(userDocRef);
+        if (userDoc.exists() && userDoc.data().dataModelVersion === 2) {
+            console.log('El modelo de datos ya está actualizado. No se requiere migración.');
+            return; // La migración ya se hizo, no hacemos nada.
+        }
+
+        console.log('Iniciando migración de datos a v2 para el usuario:', userId);
+        
+        // 1. Leer todos los datos viejos y actuales
+        const geneticsRef = collection(db, `users/${userId}/genetics`);
+        const seedsRef = collection(db, `users/${userId}/seeds`);
+
+        const [geneticsSnapshot, seedsSnapshot] = await Promise.all([
+            getDocs(geneticsRef),
+            getDocs(seedsRef)
+        ]);
+
+        if (seedsSnapshot.empty) {
+             console.log('No hay semillas para migrar. Marcando como actualizado.');
+             await setDoc(userDocRef, { dataModelVersion: 2 }, { merge: true });
+             return;
+        }
+
+        const existingGenetics = geneticsSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        const batch = writeBatch(db);
+
+        // 2. Fusionar datos de semillas en genéticas
+        for (const seedDoc of seedsSnapshot.docs) {
+            const seed = seedDoc.data();
+            const existingGenetic = existingGenetics.find(g => g.name.toLowerCase() === seed.name.toLowerCase());
+
+            if (existingGenetic) {
+                // La genética ya existe, actualizamos su stock de semillas
+                const existingGeneticRef = doc(db, `users/${userId}/genetics`, existingGenetic.id);
+                batch.update(existingGeneticRef, {
+                    seedStock: increment(seed.quantity),
+                    isSeedAvailable: true
+                });
+            } else {
+                // La genética no existe, la creamos desde la semilla
+                const newGeneticRef = doc(geneticsRef);
+                batch.set(newGeneticRef, {
+                    name: seed.name,
+                    bank: seed.bank || null,
+                    parents: null,
+                    owner: null,
+                    favorita: false,
+                    cloneStock: 0,
+                    seedStock: seed.quantity,
+                    isSeedAvailable: true,
+                    position: existingGenetics.length // Añadir al final
+                });
+                existingGenetics.push({name: seed.name}); // Evitar duplicados en la misma ejecución
+            }
+            
+            // 3. Borrar la semilla vieja del baúl
+            batch.delete(seedDoc.ref);
+        }
+
+        // 4. Marcar la migración como completada
+        batch.set(userDocRef, { dataModelVersion: 2 }, { merge: true });
+
+        // 5. Ejecutar todas las operaciones
+        await batch.commit();
+        console.log('¡Migración a v2 completada con éxito!');
+
+    } catch (error) {
+        console.error("¡ERROR GRAVE DURANTE LA MIGRACIÓN DE DATOS!", error);
+        // En un caso real, aquí se podría registrar el error en un servicio de monitoreo
+    }
+}
+
 const handlers = {
     signOut: () => signOut(auth),
     handleLogin: (email, password) => {
@@ -380,6 +453,65 @@ const handlers = {
                 getEl('authError').innerText = handleAuthError(error);
                 getEl('authError').classList.remove('hidden');
             });
+    },
+     openAddToCatalogModal: () => {
+        // Llama a la nueva función de UI que acabamos de crear
+        uiOpenAddToCatalogModal(handlers);
+    },
+
+    handleAddToCatalogSubmit: async (e, type) => {
+        e.preventDefault();
+        const form = e.target;
+        const name = form.elements.name.value.trim();
+        const quantity = parseInt(form.elements.quantity.value);
+
+        if (!name || !quantity || quantity < 1) {
+            showNotification('Nombre y cantidad (mínimo 1) son obligatorios.', 'error');
+            return;
+        }
+
+        const geneticsRef = collection(db, `users/${userId}/genetics`);
+        const q = query(geneticsRef, where("name", "==", name));
+        
+        try {
+            const querySnapshot = await getDocs(q);
+            let geneticData = {};
+            
+            if (type === 'seed') {
+                geneticData = {
+                    name: name,
+                    bank: form.elements.bank.value.trim() || null,
+                    seedStock: increment(quantity),
+                    isSeedAvailable: true
+                };
+            } else { // type === 'clone'
+                geneticData = {
+                    name: name,
+                    parents: form.elements.parents.value.trim() || null,
+                    owner: form.elements.owner.value.trim() || null,
+                    cloneStock: increment(quantity)
+                };
+            }
+
+            if (querySnapshot.empty) {
+                // No existe, la creamos
+                if(type === 'seed') geneticData.cloneStock = 0;
+                if(type === 'clone') geneticData.seedStock = 0;
+                
+                await addDoc(geneticsRef, geneticData);
+                showNotification(`"${name}" añadida al catálogo.`);
+            } else {
+                // Ya existe, la actualizamos
+                const existingDocRef = querySnapshot.docs[0].ref;
+                await updateDoc(existingDocRef, geneticData);
+                showNotification(`Stock de "${name}" actualizado.`);
+            }
+            
+            getEl('cicloModal').style.display = 'none'; // Cierra el modal
+        } catch (error) {
+            console.error("Error guardando en el catálogo:", error);
+            showNotification("Error al guardar la genética.", "error");
+        }
     },
     handleExportCSV: () => {
         const now = new Date();
@@ -489,8 +621,8 @@ const handlers = {
     },
     // NUEVO: Handler que abre el modal selector de genéticas
     openGeneticsSelector: (onConfirmCallback) => {
-        // Pasa los datos actuales y la función de callback a la UI.
-        uiOpenGeneticsSelectorModal(currentGenetics, currentSeeds, onConfirmCallback);
+        // Ahora solo pasamos el catálogo maestro unificado.
+        uiOpenGeneticsSelectorModal(currentGenetics, onConfirmCallback);
     },
     // MODIFICADO: Lógica de creación de ciclo con control granular de phenohunt
     handleCicloFormSubmit: async (e) => {
@@ -755,6 +887,8 @@ const handlers = {
             destroyToolSortables();
             handlers.hideToolsView();
         });
+        getEl('add-to-catalog-btn').addEventListener('click', handlers.openAddToCatalogModal);
+        getEl('geneticsTabBtn').addEventListener('click', () => handlers.switchToolsTab('genetics'));
         getEl('geneticsTabBtn').addEventListener('click', () => handlers.switchToolsTab('genetics'));
         getEl('stockTabBtn').addEventListener('click', () => handlers.switchToolsTab('stock'));
         getEl('baulSemillasTabBtn').addEventListener('click', () => handlers.switchToolsTab('baulSemillas'));
@@ -810,7 +944,11 @@ const handlers = {
         const searchTools = getEl('searchTools');
         const viewMode = getEl('view-mode-toggle');
         const exportBtn = getEl('exportCsvBtn');
+        const geneticsListContainer = getEl('geneticsList');
+        const stockListContainer = getEl('stockList');
+        const baulListContainer = getEl('baulSemillasList');
 
+        // Ocultar/mostrar elementos UI según la pestaña
         if (newTab === 'historial') {
             searchTools.placeholder = 'Buscar por genética, sala...';
             viewMode.classList.add('hidden');
@@ -818,33 +956,39 @@ const handlers = {
             renderHistorialView(currentHistorial, handlers);
         } else {
             searchTools.placeholder = 'Buscar por nombre...';
-            viewMode.classList.remove('hidden');
-            if (newTab === 'stock' || newTab === 'baulSemillas') {
-                 exportBtn.classList.remove('hidden');
-            } else {
-                 exportBtn.classList.add('hidden');
+            viewMode.classList.remove('hidden'); // Siempre visible para las vistas de inventario
+            exportBtn.classList.remove('hidden'); // Siempre visible para las vistas de inventario
+            
+            // Renderizar la lista correspondiente
+            if (newTab === 'genetics') {
+                renderGeneticsList(currentGenetics, handlers);
+            } else if (newTab === 'stock') {
+                const stockItems = currentGenetics.filter(g => g.cloneStock > 0);
+                renderStockList(stockItems, handlers);
+            } else if (newTab === 'baulSemillas') {
+                const seedItems = currentGenetics.filter(g => g.seedStock > 0);
+                renderBaulSemillasList(seedItems, handlers);
             }
-            handlers.handleToolsSearch({ target: { value: '' } });
         }
+        handlers.handleToolsSearch({ target: { value: '' } }); // Resetear búsqueda al cambiar de tab
     },
     handleToolsSearch: (e) => {
         const searchTerm = e.target.value.toLowerCase();
-        let filteredData;
-        let renderFunction;
+        let dataToRender;
 
         if (activeToolsTab === 'genetics') {
-            filteredData = currentGenetics.filter(g => g.name.toLowerCase().includes(searchTerm));
-            renderFunction = toolsViewMode === 'card' ? renderGeneticsList : renderGeneticsListCompact;
+            dataToRender = currentGenetics.filter(g => g.name.toLowerCase().includes(searchTerm));
+            renderGeneticsList(dataToRender, handlers);
         } else if (activeToolsTab === 'baulSemillas') {
-            filteredData = currentSeeds.filter(s => s.name.toLowerCase().includes(searchTerm));
-            renderFunction = toolsViewMode === 'card' ? renderBaulSemillasList : renderBaulSemillasListCompact;
+            dataToRender = currentGenetics.filter(g => g.seedStock > 0 && g.name.toLowerCase().includes(searchTerm));
+            renderBaulSemillasList(dataToRender, handlers);
         } else if (activeToolsTab === 'stock') {
-            filteredData = currentGenetics.filter(g => g.name.toLowerCase().includes(searchTerm));
-            renderFunction = toolsViewMode === 'card' ? renderStockList : renderStockListCompact;
+            dataToRender = currentGenetics.filter(g => g.cloneStock > 0 && g.name.toLowerCase().includes(searchTerm));
+            renderStockList(dataToRender, handlers);
         }
-
-        if (renderFunction) {
-            renderFunction(filteredData, handlers);
+        
+        // La inicialización de Drag & Drop ya no depende del modo de vista, por lo que podemos simplificar.
+        if (activeToolsTab !== 'historial') {
             initializeToolsDragAndDrop();
         }
     },
@@ -859,39 +1003,7 @@ const handlers = {
 
         handlers.handleToolsSearch({ target: getEl('searchTools') });
     },
-    handleGeneticsFormSubmit: async (e) => {
-        e.preventDefault();
-        const form = e.target;
-        const geneticId = form.dataset.id;
-        const geneticData = {
-            name: getEl('genetic-name').value.trim(),
-            parents: getEl('genetic-parents').value.trim(),
-            bank: getEl('genetic-bank').value.trim(),
-            owner: getEl('genetic-owner').value.trim(),
-            cloneStock: parseInt(getEl('genetic-stock').value) || 0,
-            favorita: geneticId ? (currentGenetics.find(g => g.id === geneticId)?.favorita || false) : false
-        };
-        if (!geneticData.name) {
-            showNotification('El nombre es obligatorio.', 'error');
-            return;
-        }
-        try {
-            if (geneticId) {
-                await updateDoc(doc(db, `users/${userId}/genetics`, geneticId), geneticData);
-                showNotification('Genética actualizada.');
-            } else {
-                geneticData.position = currentGenetics.length;
-                await addDoc(collection(db, `users/${userId}/genetics`), geneticData);
-                showNotification('Genética añadida.');
-            }
-            form.reset();
-            delete form.dataset.id;
-            getEl('genetic-form-title').innerText = 'Añadir Nueva Genética';
-        } catch (error) {
-            console.error("Error saving genetic:", error);
-            showNotification('Error al guardar la genética.', 'error');
-        }
-    },
+    
     editGenetic: (id) => {
         const genetic = currentGenetics.find(g => g.id === id);
         if (genetic) {
@@ -947,28 +1059,7 @@ const handlers = {
             showNotification('Error al actualizar el stock.', 'error');
         }
     },
-    handleSeedFormSubmit: async (e) => {
-        e.preventDefault();
-        const form = e.target;
-        const seedData = {
-            name: getEl('seed-name').value.trim(),
-            bank: getEl('seed-bank').value.trim(),
-            quantity: parseInt(getEl('seed-quantity').value) || 0
-        };
-        if (!seedData.name || seedData.quantity <= 0) {
-            showNotification('Nombre y cantidad (mayor a 0) son obligatorios.', 'error');
-            return;
-        }
-        try {
-            seedData.position = currentSeeds.length;
-            await addDoc(collection(db, `users/${userId}/seeds`), seedData);
-            showNotification('Semillas añadidas al baúl.');
-            form.reset();
-        } catch (error) {
-            console.error("Error saving seed:", error);
-            showNotification('Error al guardar las semillas.', 'error');
-        }
-    },
+    
     deleteSeed: (id) => {
         const seed = currentSeeds.find(s => s.id === id);
         if(seed) {
@@ -1353,20 +1444,32 @@ const handlers = {
     }
 };
 
-onAuthStateChanged(auth, user => {
+onAuthStateChanged(auth, async user => { // Convertimos la función en async
     getEl('initial-loader').classList.add('hidden');
     if (user) {
         userId = user.uid;
+
+        // --- INICIO DEL BLOQUE DE MIGRACIÓN ---
+        // Mostramos el loader de nuevo mientras se ejecuta la posible migración
+        getEl('initial-loader').classList.remove('hidden'); 
+        
+        await runDataMigration(user.uid);
+        
+        // Ocultamos el loader una vez que la migración ha terminado
+        getEl('initial-loader').classList.add('hidden');
+        // --- FIN DEL BLOQUE DE MIGRACIÓN ---
+
         handlers.hideAllViews();
         const appView = getEl('app');
         appView.classList.remove('hidden');
         appView.classList.add('view-container');
         getEl('welcomeUser').innerText = `Anota todo, no seas pancho.`;
 
+        // Ahora, cargamos los datos ya migrados/unificados
         loadSalas();
         loadCiclos();
-        loadGenetics();
-        loadSeeds();
+        loadGenetics(); // Este ahora contiene las semillas también
+        // loadSeeds(); // Esta función ya no es necesaria
         loadHistorial();
         initializeEventListeners(handlers);
         window.addEventListener('click', (e) => {
@@ -1390,7 +1493,7 @@ onAuthStateChanged(auth, user => {
         if (salasUnsubscribe) salasUnsubscribe();
         if (ciclosUnsubscribe) ciclosUnsubscribe();
         if (geneticsUnsubscribe) geneticsUnsubscribe();
-        if (seedsUnsubscribe) seedsUnsubscribe();
+        if (seedsUnsubscribe) seedsUnsubscribe(); // Aún es bueno limpiarlo en logout
         if (historialUnsubscribe) historialUnsubscribe();
 
         handlers.hideAllViews();

@@ -194,7 +194,76 @@ export function openCicloModal(ciclo = null, salas = [], preselectedSalaId = nul
     
     initializeTooltips();
 }
+export function openAddToCatalogModal(handlers) {
+    const modal = getEl('cicloModal'); // Reutilizamos un modal existente para mostrarlo
+    
+    const modalContent = `
+        <div class="w-11/12 md:w-full max-w-lg p-6 rounded-lg shadow-lg">
+            <h2 class="text-2xl font-bold mb-6 text-amber-400">Añadir al Catálogo</h2>
+            
+            <div id="catalog-choice-container">
+                <p class="text-gray-600 dark:text-gray-300 mb-4">¿Qué quieres añadir a tu catálogo maestro?</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <button type="button" id="add-choice-seeds" class="btn-secondary btn-base p-6 rounded-lg text-lg flex flex-col items-center gap-2">
+                        🌱
+                        <span>Semillas</span>
+                    </button>
+                    <button type="button" id="add-choice-clone" class="btn-secondary btn-base p-6 rounded-lg text-lg flex flex-col items-center gap-2">
+                        🧬
+                        <span>Nuevo Clon (Cut)</span>
+                    </button>
+                </div>
+            </div>
 
+            <form id="addSeedsForm" class="hidden space-y-4">
+                <h3 class="text-lg font-bold">Añadir Semillas</h3>
+                <input type="text" name="name" placeholder="Nombre de la Genética" required class="w-full p-2 rounded-md">
+                <input type="text" name="bank" placeholder="Banco (Opcional)" class="w-full p-2 rounded-md">
+                <input type="number" name="quantity" placeholder="Cantidad de semillas" required class="w-full p-2 rounded-md">
+                <div class="flex justify-end gap-4 mt-4">
+                    <button type="button" class="btn-secondary btn-base py-2 px-4 rounded-lg cancel-add-btn">Cancelar</button>
+                    <button type="submit" class="btn-primary btn-base py-2 px-4 rounded-lg">Guardar Semillas</button>
+                </div>
+            </form>
+
+            <form id="addCloneForm" class="hidden space-y-4">
+                 <h3 class="text-lg font-bold">Añadir Nuevo Clon (Cut)</h3>
+                 <input type="text" name="name" placeholder="Nombre de la Genética" required class="w-full p-2 rounded-md">
+                 <input type="text" name="parents" placeholder="Parentales (Opcional)" class="w-full p-2 rounded-md">
+                 <input type="text" name="owner" placeholder="Origen / Dueño (Opcional)" class="w-full p-2 rounded-md">
+                 <input type="number" name="quantity" value="1" placeholder="Cantidad de clones" required class="w-full p-2 rounded-md">
+                 <div class="flex justify-end gap-4 mt-4">
+                    <button type="button" class="btn-secondary btn-base py-2 px-4 rounded-lg cancel-add-btn">Cancelar</button>
+                    <button type="submit" class="btn-primary btn-base py-2 px-4 rounded-lg">Guardar Clon</button>
+                </div>
+            </form>
+        </div>
+    `;
+    modal.innerHTML = modalContent;
+    modal.style.display = 'flex';
+
+    // Lógica interna del modal
+    const choiceContainer = getEl('catalog-choice-container');
+    const addSeedsForm = getEl('addSeedsForm');
+    const addCloneForm = getEl('addCloneForm');
+
+    getEl('add-choice-seeds').addEventListener('click', () => {
+        choiceContainer.classList.add('hidden');
+        addSeedsForm.classList.remove('hidden');
+    });
+
+    getEl('add-choice-clone').addEventListener('click', () => {
+        choiceContainer.classList.add('hidden');
+        addCloneForm.classList.remove('hidden');
+    });
+    
+    document.querySelectorAll('.cancel-add-btn').forEach(btn => {
+        btn.addEventListener('click', () => modal.style.display = 'none');
+    });
+
+    addSeedsForm.addEventListener('submit', (e) => handlers.handleAddToCatalogSubmit(e, 'seed'));
+    addCloneForm.addEventListener('submit', (e) => handlers.handleAddToCatalogSubmit(e, 'clone'));
+}
 // NUEVO: Función que renderiza la lista de genéticas seleccionadas en el modal de ciclo.
 function renderSelectedGeneticsForCiclo(selectedGenetics) {
     const container = getEl('selected-genetics-container');
@@ -236,7 +305,7 @@ function renderSelectedGeneticsForCiclo(selectedGenetics) {
     });
 }
 
-export function openGeneticsSelectorModal(allGenetics, allSeeds, onConfirm) {
+export function openGeneticsSelectorModal(allGenetics, onConfirm) {
     let currentSelection = []; // Estado interno para esta modal
 
     const modal = getEl('geneticsSelectorModal');
@@ -371,7 +440,7 @@ export function openGeneticsSelectorModal(allGenetics, allSeeds, onConfirm) {
     };
 
     allGenetics.forEach(g => clonesContent.appendChild(createListItem(g, 'clone')));
-    allSeeds.forEach(s => semillasContent.appendChild(createListItem(s, 'seed')));
+    allGenetics.filter(g => g.isSeedAvailable).forEach(g => semillasContent.appendChild(createListItem(g, 'seed')));
 
     const tabClonesBtn = getEl('selectorTabClones');
     const tabSemillasBtn = getEl('selectorTabSemillas');
@@ -803,35 +872,13 @@ export function renderToolsView() {
             </div>
         </div>
         <div id="geneticsContent">
-            <div id="geneticsListContainer" class="flex flex-col md:flex-row gap-8">
-                <div class="w-full md:w-2/5 lg:w-1/3">
-                    <form id="geneticsForm" class="card p-6 space-y-4">
-                        <h3 id="genetic-form-title" class="text-xl font-bold text-amber-400">Añadir Nueva Genética</h3>
-                        <div class="form-field-with-tooltip">
-                            <input type="text" id="genetic-name" placeholder="Nombre de la genética" required class="w-full p-2 rounded-md">
-                            ${createTooltipIcon("El nombre con el que identificás a esta variedad. Ej: 'Gorilla Glue #4', 'Moby Dick', 'Punto Rojo'.")}
-                        </div>
-                        <div class="form-field-with-tooltip">
-                            <input type="text" id="genetic-parents" placeholder="Padres" class="w-full p-2 rounded-md">
-                            ${createTooltipIcon("El cruce que le dio origen. Si no lo sabés, dejalo vacío. Ej: 'Chem's Sister x Sour Dubb'.")}
-                        </div>
-                        <div class="form-field-with-tooltip">
-                            <input type="text" id="genetic-bank" placeholder="Banco" class="w-full p-2 rounded-md">
-                            ${createTooltipIcon("El banco de semillas que la comercializa o la creó. Ej: 'DNA Genetics', 'Sweet Seeds', 'BSF'.")}
-                        </div>
-                        <div class="form-field-with-tooltip">
-                            <input type="text" id="genetic-owner" placeholder="Dueño" class="w-full p-2 rounded-md">
-                            ${createTooltipIcon("Acá ponés de quién es el 'cut' (el esqueje original). Sirve para saber quién te pasó el clon. Ej: 'esqueje de Growshop X'.")}
-                        </div>
-                        <div class="form-field-with-tooltip">
-                            <input type="number" id="genetic-stock" placeholder="Stock de clones inicial" class="w-full p-2 rounded-md">
-                            ${createTooltipIcon("Con cuántos clones o 'madres' de esta genética empezás. Después, el stock se manejará desde la pestaña 'Stock de Clones'.")}
-                        </div>
-                        <button type="submit" class="btn-primary btn-base w-full py-2 rounded-lg">Guardar Genética</button>
-                    </form>
-                </div>
-                <div id="geneticsList" class="w-full md:w-3/5 lg:w-2/3 space-y-4"></div>
+            <div class="flex justify-end mb-4">
+                 <button id="add-to-catalog-btn" class="btn-primary btn-base py-2 px-4 rounded-lg">
+                    + Añadir al Catálogo
+                </button>
             </div>
+            <div id="geneticsList" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                </div>
         </div>
         <div id="stockContent" class="hidden">
             <div id="stockList" class="space-y-4"></div>
@@ -1165,48 +1212,71 @@ export function renderSalasGrid(salas, ciclos, handlers) {
     });
     initializeTooltips();
 }
+function createMasterGeneticCard(g, handlers) {
+    const geneticCard = document.createElement('div');
+    geneticCard.className = 'card p-4 flex flex-col justify-between';
+    geneticCard.dataset.id = g.id;
 
+    const favoriteIconHTML = `
+        <button data-action="toggle-favorite" data-id="${g.id}" class="btn-base p-1 rounded-full text-gray-400 hover:bg-yellow-100 dark:hover:bg-gray-700" title="Marcar como favorita">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 ${g.favorita ? 'text-yellow-400' : 'text-gray-400'}">
+                <path fill-rule="evenodd" d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.006 5.404.434c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.434 2.082-5.006Z" clip-rule="evenodd" />
+            </svg>
+        </button>
+    `;
+
+    const seedStockHTML = g.seedStock > 0 ? `<span class="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300">🌱 Semillas: <strong class="text-amber-400">${g.seedStock}</strong></span>` : '';
+    const cloneStockHTML = g.cloneStock > 0 ? `<span class="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300">🧬 Clones: <strong class="text-amber-400">${g.cloneStock}</strong></span>` : '';
+
+    geneticCard.innerHTML = `
+        <div>
+            <div class="flex justify-between items-start">
+                <div class="flex items-center gap-2">
+                    ${favoriteIconHTML}
+                    <h3 class="font-bold text-lg text-amber-400">${g.name}</h3>
+                </div>
+                <span class="text-xs text-gray-400 dark:text-gray-500">${g.bank || 'Sin Banco'}</span>
+            </div>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1 pl-9">${g.parents || 'Parentales desconocidos'}</p>
+            
+            <div class="mt-4 pl-9 flex flex-col sm:flex-row gap-x-4 gap-y-1">
+                ${seedStockHTML}
+                ${cloneStockHTML}
+            </div>
+        </div>
+        <div class="flex justify-end gap-2 mt-4">
+            <button data-action="edit-genetic" data-id="${g.id}" class="btn-secondary btn-base p-2 rounded-lg" title="Editar">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg>
+            </button>
+            <button data-action="delete-genetic" data-id="${g.id}" class="btn-danger btn-base p-2 rounded-lg" title="Eliminar">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.134-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.067-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>
+            </button>
+        </div>
+    `;
+    return geneticCard;
+}
 export function renderGeneticsList(genetics, handlers) {
     const geneticsList = getEl('geneticsList');
     if (!geneticsList) return;
     geneticsList.innerHTML = '';
     if (genetics.length === 0) {
-        geneticsList.innerHTML = `<p class="text-center text-gray-500 dark:text-gray-400">No hay genéticas que coincidan con la búsqueda.</p>`;
+        geneticsList.innerHTML = `<p class="text-center text-gray-500 dark:text-gray-400 col-span-full">Tu catálogo de genéticas está vacío. ¡Añade tu primer clon o paquete de semillas para empezar!</p>`;
         return;
     }
-    genetics.sort((a, b) => (a.position || 0) - (b.position || 0));
+    
+    // Ordenar por favoritas primero, luego alfabéticamente
+    genetics.sort((a, b) => {
+        if (a.favorita && !b.favorita) return -1;
+        if (!a.favorita && b.favorita) return 1;
+        return a.name.localeCompare(b.name);
+    });
+
     genetics.forEach(g => {
-        const geneticCard = document.createElement('div');
-        geneticCard.className = 'card p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center';
-        geneticCard.dataset.id = g.id;
-
-        const favoriteIconHTML = `
-            <button data-action="toggle-favorite" data-id="${g.id}" class="btn-base p-1 rounded-full text-gray-400 hover:bg-yellow-100 dark:hover:bg-gray-700" title="Marcar como favorita">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 ${g.favorita ? 'text-yellow-400' : 'text-gray-400'}">
-                    <path fill-rule="evenodd" d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.006 5.404.434c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.434 2.082-5.006Z" clip-rule="evenodd" />
-                </svg>
-            </button>
-        `;
-
-        geneticCard.innerHTML = `
-            <div class="mb-3 sm:mb-0">
-                <div class="flex items-center gap-2">
-                    ${favoriteIconHTML}
-                    <p class="font-bold text-lg text-amber-400">${g.name}</p>
-                </div>
-                <p class="text-sm text-gray-500 dark:text-gray-400 pl-10">${g.parents || 'Sin padres definidos'} | ${g.bank || 'Sin banco'} | ${g.owner || 'Sin dueño'}</p>
-            </div>
-            <div class="flex gap-2 flex-wrap">
-                <button data-action="edit-genetic" data-id="${g.id}" class="btn-secondary btn-base p-2 rounded-lg" title="Editar">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg>
-                </button>
-                <button data-action="delete-genetic" data-id="${g.id}" class="btn-danger btn-base p-2 rounded-lg" title="Eliminar">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.134-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.067-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>
-                </button>
-            </div>
-        `;
+        const geneticCard = createMasterGeneticCard(g, handlers);
         geneticsList.appendChild(geneticCard);
     });
+    
+    // Re-asignar listeners después de renderizar
     geneticsList.querySelectorAll('[data-action="edit-genetic"]').forEach(btn => btn.addEventListener('click', (e) => handlers.editGenetic(e.currentTarget.dataset.id)));
     geneticsList.querySelectorAll('[data-action="delete-genetic"]').forEach(btn => btn.addEventListener('click', (e) => handlers.deleteGenetic(e.currentTarget.dataset.id)));
     geneticsList.querySelectorAll('[data-action="toggle-favorite"]').forEach(btn => btn.addEventListener('click', (e) => handlers.handleToggleFavorite(e.currentTarget.dataset.id)));
@@ -1335,10 +1405,10 @@ export function renderBaulSemillasList(seeds, handlers) {
             <div class="mb-3 sm:mb-0">
                 <p class="font-bold text-lg text-amber-400">${s.name}</p>
                 <p class="text-sm text-gray-500 dark:text-gray-400">${s.bank || 'Banco Desconocido'}</p>
-                <p class="text-sm text-gray-500 dark:text-gray-400">Cantidad: <span class="font-bold text-amber-400">${s.quantity || 0}</span></p>
+                <p class="text-sm text-gray-500 dark:text-gray-400">Cantidad: <span class="font-bold text-amber-400">${s.seedStock || 0}</span></p>
             </div>
             <div class="flex gap-2 flex-wrap">
-                <button data-action="germinate-seed" data-id="${s.id}" class="btn-primary btn-base py-2 px-4 rounded-lg text-sm tooltip-trigger" ${s.quantity > 0 ? '' : 'disabled'} data-tippy-content="Inicia el proceso de germinación. Esto descontará la cantidad seleccionada de tu stock en el baúl.">Germinar</button>
+                <button data-action="germinate-seed" data-id="${s.id}" class="btn-primary btn-base py-2 px-4 rounded-lg text-sm tooltip-trigger" ${s.seedStock > 0 ? '' : 'disabled'} data-tippy-content="Inicia el proceso de germinación. Esto descontará la cantidad seleccionada de tu stock en el baúl.">Germinar</button>
                 <button data-action="delete-seed" data-id="${s.id}" class="btn-danger btn-base p-2 rounded-lg" title="Eliminar">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.134-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.067-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>
                 </button>
@@ -1365,11 +1435,11 @@ export function renderBaulSemillasListCompact(seeds, handlers) {
         item.dataset.id = s.id;
         item.innerHTML = `
             <div>
-                <p class="font-semibold text-amber-400">${s.name} <span class="text-sm font-normal text-gray-500 dark:text-gray-400">(${s.quantity})</span></p>
+                <p class="font-semibold text-amber-400">${s.name} <span class="text-sm font-normal text-gray-500 dark:text-gray-400">(${s.seedStock})</span></p>
                 <p class="text-xs text-gray-500 dark:text-gray-400">${s.bank || 'Banco Desconocido'}</p>
             </div>
             <div class="flex gap-2">
-                <button data-action="germinate-seed" data-id="${s.id}" class="btn-primary btn-base p-2 rounded-lg text-sm tooltip-trigger" ${s.quantity > 0 ? '' : 'disabled'} data-tippy-content="Inicia el proceso de germinación. Esto descontará la cantidad seleccionada de tu stock en el baúl.">
+                <button data-action="germinate-seed" data-id="${s.id}" class="btn-primary btn-base p-2 rounded-lg text-sm tooltip-trigger" ${s.seedStock > 0 ? '' : 'disabled'} data-tippy-content="Inicia el proceso de germinación. Esto descontará la cantidad seleccionada de tu stock en el baúl.">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M5.636 5.636a9 9 0 1 0 12.728 0M12 3v9" /></svg>
                 </button>
                 <button data-action="delete-seed" data-id="${s.id}" class="btn-danger btn-base p-2 rounded-lg" title="Eliminar">
