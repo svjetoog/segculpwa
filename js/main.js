@@ -61,21 +61,20 @@ function exportToCSV(data, filename) {
     }
 
     const headers = Object.keys(data[0]);
-    // MODIFICADO: Usamos punto y coma (;) como separador para compatibilidad con Excel en español.
-    const csvRows = [headers.join(';')]; 
+    // CORREGIDO: Volvemos a la coma (,), el estándar universal que Google Sheets prefiere.
+    const csvRows = [headers.join(',')]; 
 
     for (const row of data) {
         const values = headers.map(header => {
             const escaped = ('' + row[header]).replace(/"/g, '""');
             return `"${escaped}"`;
         });
-        // MODIFICADO: Usamos punto y coma (;) también para las filas de datos.
-        csvRows.push(values.join(';'));
+        // CORREGIDO: Volvemos a la coma (,) también aquí.
+        csvRows.push(values.join(','));
     }
 
     const csvString = csvRows.join('\n');
-    // MODIFICADO: Añadimos el BOM de UTF-8 (\uFEFF) al principio del string.
-    // Esto le indica a Excel que use la codificación correcta para acentos y caracteres especiales.
+    // Mantenemos el BOM (\uFEFF) ya que no molesta a Google Sheets y sigue ayudando a Excel.
     const blob = new Blob(['\uFEFF' + csvString], { type: 'text/csv;charset=utf-8;' });
 
     const link = document.createElement('a');
