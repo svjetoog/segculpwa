@@ -517,19 +517,33 @@ const handlers = {
         const now = new Date();
         const dateString = `${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}`;
 
-        if (activeToolsTab === 'stock') {
-            const stockData = currentGenetics.map(g => ({
+        if (activeToolsTab === 'genetics') {
+            // CASO NUEVO: Exporta una lista maestra desde el catálogo principal
+            const masterData = currentGenetics.map(g => ({
+                nombre: g.name,
+                banco: g.bank || 'N/A',
+                stock_clones: g.cloneStock || 0,
+                stock_semillas: g.seedStock || 0,
+                favorita: g.favorita ? 'Si' : 'No'
+            }));
+            exportToCSV(masterData, `catalogo_geneticas_${dateString}.csv`);
+
+        } else if (activeToolsTab === 'stock') {
+            // CASO CORREGIDO: Filtra del catálogo principal solo los clones
+            const stockData = currentGenetics.filter(g => g.cloneStock > 0).map(g => ({
                 nombre: g.name,
                 banco: g.bank || 'N/A',
                 stock_clones: g.cloneStock || 0,
                 favorita: g.favorita ? 'Si' : 'No'
             }));
             exportToCSV(stockData, `stock_clones_${dateString}.csv`);
+
         } else if (activeToolsTab === 'baulSemillas') {
-            const seedData = currentSeeds.map(s => ({
-                nombre: s.name,
-                banco: s.bank || 'N/A',
-                cantidad: s.quantity || 0
+            // CASO CORREGIDO: Filtra del catálogo principal solo las semillas
+            const seedData = currentGenetics.filter(g => g.seedStock > 0).map(g => ({
+                nombre: g.name,
+                banco: g.bank || 'N/A',
+                stock_semillas: g.seedStock || 0
             }));
             exportToCSV(seedData, `baul_semillas_${dateString}.csv`);
         }
