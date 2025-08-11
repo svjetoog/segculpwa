@@ -12,7 +12,7 @@ const FERTILIZER_LINES = {
     "Advanced Nutrients": ["Sensi Grow A+B", "Sensi Bloom A+B", "Voodoo Juice", "B-52", "Big Bud", "Overdrive", "Flawless Finish"],
     "Athena (Blended)": ["Grow A", "Grow B", "Bloom A", "Bloom B", "CaMg", "PK", "Cleanse"],
     "Orgánico / Living Soil": ["Humus de lombriz", "Compost", "Bokashi", "Guano de murciélago", "Harina de hueso", "Melaza", "Micorrizas", "Trichodermas"],
-    "Plagron": ["Power Roots", "Terra Grow", "Terra Bloom", "Pure Zym", "Sugar Royal", "Green Sensation", "PK 13-14"], // <-- AÑADE ESTA LÍNEA
+    "Plagron": ["Power Roots", "Terra Grow", "Terra Bloom", "Pure Zym", "Sugar Royal", "Green Sensation", "PK 13-14"],
     "Personalizada": []
 };
 
@@ -108,11 +108,34 @@ export function openSalaModal(sala = null) {
     modal.style.display = 'flex';
 }
 
-export function openCicloModal(ciclo = null, salas = [], preselectedSalaId = null) {
+// MODIFICADO: La función ahora acepta el objeto handlers para poder llamar al selector de genéticas.
+export function openCicloModal(ciclo = null, salas = [], preselectedSalaId = null, handlers) {
     const title = ciclo ? 'Editar Ciclo' : 'Añadir Ciclo';
     const salaOptions = salas.length > 0
         ? salas.map(s => `<option value="${s.id}" ${ (ciclo && ciclo.salaId === s.id) || (preselectedSalaId === s.id) ? 'selected' : ''}>${s.name}</option>`).join('')
         : '<option value="" disabled>Crea una sala primero</option>';
+    
+    // NUEVO: Contenido para la sección de genéticas y el checkbox de phenohunt.
+    const geneticsSectionHTML = !ciclo ? `
+        <hr class="border-gray-300 dark:border-gray-600 my-6">
+        <div>
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="text-lg font-medium text-gray-800 dark:text-gray-200">Genéticas del Ciclo</h3>
+                <label class="flex items-center gap-2 text-sm cursor-pointer">
+                    <input type="checkbox" id="is-phenohunt" class="h-4 w-4 rounded text-amber-500 focus:ring-amber-500">
+                    ¿Es un Phenohunt?
+                    ${createTooltipIcon("Marcar si quieres hacer seguimiento individual a cada planta. Ideal para encontrar un fenotipo específico.")}
+                </label>
+            </div>
+            <div id="selected-genetics-container" class="space-y-2 mb-4">
+                 <p class="text-sm text-gray-500 dark:text-gray-400 italic">Añade genéticas desde tu stock de clones o baúl de semillas.</p>
+            </div>
+            <button type="button" id="open-genetics-selector-btn" class="btn-secondary btn-base w-full py-2 rounded-lg text-sm">
+                + Definir Genéticas del Ciclo
+            </button>
+            <input type="hidden" id="ciclo-genetics-data" name="ciclo-genetics-data">
+        </div>
+    ` : '';
     
     const content = `
         <div class="space-y-4">
@@ -155,6 +178,7 @@ export function openCicloModal(ciclo = null, salas = [], preselectedSalaId = nul
                 <label for="ciclo-notes" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Notas</label>
                 <textarea id="ciclo-notes" rows="3" class="w-full p-2 rounded-md">${ciclo ? ciclo.notes : ''}</textarea>
             </div>
+            ${geneticsSectionHTML}
         </div>
     `;
     const modal = getEl('cicloModal');
@@ -162,9 +186,198 @@ export function openCicloModal(ciclo = null, salas = [], preselectedSalaId = nul
     
     getEl('cicloForm').dataset.id = ciclo ? ciclo.id : '';
     modal.style.display = 'flex';
+    
+    // NUEVO: Lógica para el botón que abre el selector de genéticas
+    if (!ciclo) {
+        const openSelectorBtn = getEl('open-genetics-selector-btn');
+        if(openSelectorBtn) {
+            openSelectorBtn.addEventListener('click', () => {
+                // El handler se encargará de llamar a la UI con los datos necesarios
+                handlers.openGeneticsSelector((selectedGenetics) => {
+                    renderSelectedGeneticsForCiclo(selectedGenetics);
+                });
+            });
+        }
+    }
+    
     initializeTooltips();
 }
 
+// NUEVO: Función que renderiza la lista de genéticas seleccionadas en el modal de ciclo.
+function renderSelectedGeneticsForCiclo(selectedGenetics) {
+    const container = getEl('selected-genetics-container');
+    const dataInput = getEl('ciclo-genetics-data');
+    container.innerHTML = '';
+
+    if (selectedGenetics.length === 0) {
+        container.innerHTML = `<p class="text-sm text-gray-500 dark:text-gray-400 italic">Añade genéticas desde tu stock de clones o baúl de semillas.</p>`;
+        dataInput.value = '';
+        return;
+    }
+
+    selectedGenetics.forEach((item, index) => {
+        const itemDiv = document.createElement('div');
+        itemDiv.className = 'flex justify-between items-center p-2 rounded-md bg-gray-100 dark:bg-gray-800 text-sm';
+        itemDiv.innerHTML = `
+            <span>
+                <strong class="text-amber-500">${item.quantity}x</strong> 
+                ${item.name} 
+                <span class="text-xs text-gray-500 dark:text-gray-400">(${item.source})</span>
+            </span>
+            <button type="button" data-index="${index}" class="btn-danger btn-base p-1 rounded-full w-5 h-5 flex items-center justify-center text-xs remove-selected-genetic-btn">&times;</button>
+        `;
+        container.appendChild(itemDiv);
+    });
+
+    // Guardar los datos en el input oculto para que el formulario los pueda recoger.
+    dataInput.value = JSON.stringify(selectedGenetics);
+
+    // Añadir listeners a los botones de eliminar
+    document.querySelectorAll('.remove-selected-genetic-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const indexToRemove = parseInt(e.currentTarget.dataset.index);
+            // Filtramos el array para quitar el elemento
+            const updatedSelection = selectedGenetics.filter((_, i) => i !== indexToRemove);
+            // Volvemos a renderizar la lista con los datos actualizados
+            renderSelectedGeneticsForCiclo(updatedSelection);
+        });
+    });
+}
+
+// NUEVO: El modal completo para el selector masivo de genéticas.
+export function openGeneticsSelectorModal(allGenetics, allSeeds, onConfirm) {
+    let currentSelection = []; // Estado interno para esta modal
+
+    const modal = getEl('geneticsSelectorModal');
+    modal.innerHTML = `
+        <div class="w-11/12 md:w-full max-w-2xl p-6 rounded-lg shadow-lg flex flex-col max-h-[90vh]">
+            <h2 class="text-2xl font-bold mb-4 text-amber-400">Definir Genéticas del Ciclo</h2>
+            
+            <div class="mb-4 border-b border-gray-300 dark:border-gray-700">
+                <nav class="flex space-x-4" aria-label="Tabs">
+                    <button id="selectorTabClones" class="py-3 px-1 border-b-2 font-medium text-lg text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white border-amber-400 btn-base">Desde Clones</button>
+                    <button id="selectorTabSemillas" class="py-3 px-1 border-b-2 font-medium text-lg text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white border-transparent btn-base">Desde Semillas</button>
+                </nav>
+            </div>
+
+            <div class="flex-grow overflow-y-auto pr-2">
+                <div id="selectorContentClones"></div>
+                <div id="selectorContentSemillas" class="hidden"></div>
+            </div>
+
+            <div class="mt-6 pt-4 border-t border-gray-300 dark:border-gray-600">
+                <h3 class="font-bold mb-2">Resumen de Selección</h3>
+                <div id="selector-summary" class="space-y-1 text-sm max-h-24 overflow-y-auto mb-4">
+                    <p class="italic text-gray-500">Ninguna genética seleccionada.</p>
+                </div>
+                <div class="flex justify-end gap-4">
+                    <button type="button" id="cancelGeneticsSelector" class="btn-secondary btn-base py-2 px-4 rounded-lg">Cancelar</button>
+                    <button type="button" id="confirmGeneticsSelector" class="btn-primary btn-base py-2 px-4 rounded-lg">Confirmar Selección</button>
+                </div>
+            </div>
+        </div>
+    `;
+    modal.style.display = 'flex';
+
+    const clonesContent = getEl('selectorContentClones');
+    const semillasContent = getEl('selectorContentSemillas');
+    const summaryContainer = getEl('selector-summary');
+
+    const updateSelection = (item, quantity, isChecked) => {
+        const existingIndex = currentSelection.findIndex(s => s.id === item.id && s.source === item.source);
+        if (isChecked) {
+            if (existingIndex > -1) {
+                currentSelection[existingIndex].quantity = quantity;
+            } else {
+                currentSelection.push({ ...item, quantity });
+            }
+        } else {
+            if (existingIndex > -1) {
+                currentSelection.splice(existingIndex, 1);
+            }
+        }
+        renderSummary();
+    };
+    
+    const renderSummary = () => {
+        summaryContainer.innerHTML = '';
+        if (currentSelection.length === 0) {
+            summaryContainer.innerHTML = '<p class="italic text-gray-500">Ninguna genética seleccionada.</p>';
+            return;
+        }
+        currentSelection.forEach(item => {
+            const summaryItem = document.createElement('p');
+            summaryItem.innerHTML = `<strong class="text-amber-500">${item.quantity}x</strong> ${item.name} <span class="text-xs">(${item.source})</span>`;
+            summaryContainer.appendChild(summaryItem);
+        });
+    };
+
+    const createListItem = (item, source) => {
+        const stock = source === 'clone' ? item.cloneStock : item.quantity;
+        const div = document.createElement('div');
+        div.className = 'flex items-center justify-between p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800';
+        div.innerHTML = `
+            <div class="flex items-center gap-3">
+                <input type="checkbox" data-id="${item.id}" data-source="${source}" class="h-5 w-5 rounded text-amber-500 focus:ring-amber-500 selector-checkbox">
+                <div>
+                    <p class="font-semibold">${item.name}</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Disponibles: ${stock || 0}</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <label class="text-sm">Cant:</label>
+                <input type="number" min="1" max="${stock || 0}" value="1" disabled class="w-20 p-1 rounded-md selector-quantity">
+            </div>
+        `;
+        const checkbox = div.querySelector('.selector-checkbox');
+        const quantityInput = div.querySelector('.selector-quantity');
+
+        checkbox.addEventListener('change', (e) => {
+            const isChecked = e.target.checked;
+            quantityInput.disabled = !isChecked;
+            if (isChecked) {
+                quantityInput.focus();
+            }
+            const itemData = { id: item.id, name: item.name, source };
+            updateSelection(itemData, parseInt(quantityInput.value), isChecked);
+        });
+        
+        quantityInput.addEventListener('change', () => {
+             const itemData = { id: item.id, name: item.name, source };
+             updateSelection(itemData, parseInt(quantityInput.value), checkbox.checked);
+        });
+
+        return div;
+    };
+
+    allGenetics.forEach(g => clonesContent.appendChild(createListItem(g, 'clone')));
+    allSeeds.forEach(s => semillasContent.appendChild(createListItem(s, 'seed')));
+
+    // Lógica de Pestañas
+    const tabClonesBtn = getEl('selectorTabClones');
+    const tabSemillasBtn = getEl('selectorTabSemillas');
+    tabClonesBtn.addEventListener('click', () => {
+        tabClonesBtn.classList.add('border-amber-400');
+        tabSemillasBtn.classList.remove('border-amber-400');
+        clonesContent.classList.remove('hidden');
+        semillasContent.classList.add('hidden');
+    });
+    tabSemillasBtn.addEventListener('click', () => {
+        tabSemillasBtn.classList.add('border-amber-400');
+        tabClonesBtn.classList.remove('border-amber-400');
+        semillasContent.classList.remove('hidden');
+        clonesContent.classList.add('hidden');
+    });
+
+    getEl('cancelGeneticsSelector').addEventListener('click', () => modal.style.display = 'none');
+    getEl('confirmGeneticsSelector').addEventListener('click', () => {
+        onConfirm(currentSelection);
+        modal.style.display = 'none';
+    });
+}
+
+// ... (El resto de ui.js no necesita cambios, por lo que se omite por brevedad pero estaría aquí)
+// (He incluido el resto del archivo para cumplir con la solicitud de no omitir nada)
 export function openLogModal(ciclo, week, log = null) {
     const title = 'Añadir Registro';
     const content = `
@@ -202,7 +415,6 @@ export function openLogModal(ciclo, week, log = null) {
             const addLineBtn = getEl('add-fert-line-btn');
             const linesContainer = getEl('fertilizer-lines-container');
             
-            // MODIFICADO: Ahora esta función interna pre-selecciona la línea guardada
             const addFertilizerLineBlock = () => {
                 const lineBlock = document.createElement('div');
                 lineBlock.className = 'fert-line-block border border-gray-300 dark:border-gray-600 p-3 rounded-md relative mt-2';
@@ -224,7 +436,6 @@ export function openLogModal(ciclo, week, log = null) {
                 const lineSelect = lineBlock.querySelector('.fert-line-select');
                 const productsContainer = lineBlock.querySelector('.fertilizer-products-container');
 
-                // --- NUEVO: Lógica de pre-selección ---
                 if (ciclo.lastUsedFertilizerLine) {
                     lineSelect.value = ciclo.lastUsedFertilizerLine;
                 }
@@ -232,12 +443,11 @@ export function openLogModal(ciclo, week, log = null) {
                 lineSelect.addEventListener('change', () => renderFertilizerProducts(lineSelect.value, productsContainer));
                 lineBlock.querySelector('.remove-line-btn').addEventListener('click', () => lineBlock.remove());
                 
-                // Disparamos el 'change' para renderizar los productos de la línea (pre)seleccionada
                 renderFertilizerProducts(lineSelect.value, productsContainer); 
             };
 
             addLineBtn.addEventListener('click', addFertilizerLineBlock);
-            addFertilizerLineBlock(); // Añadir el primer bloque por defecto
+            addFertilizerLineBlock();
 
         } else if (type === 'Control de Plagas') {
             logFieldsContainer.innerHTML = `
@@ -369,7 +579,6 @@ export function openGerminateModal(seed) {
     modal.style.display = 'flex';
 }
 
-// MODIFICADO: Añadida la lógica del botón de eliminar semana
 export function renderCicloDetails(ciclo, handlers) {
     let weeksToRender = [];
     let phaseTitle = '';
@@ -434,7 +643,6 @@ export function renderCicloDetails(ciclo, handlers) {
                 }).join('')}
             </div>` : `<p class="text-center text-gray-500 dark:text-gray-400">No hay semanas definidas.</p>`;
         
-        // CORREGIDO: Lógica de botones de acción principal
         const mainActionButtons = `
             <div class="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row items-center justify-center gap-4">
                 <button id="add-week-btn" class="btn-secondary btn-base py-2 px-4 rounded-lg w-full sm:w-auto">
@@ -734,7 +942,7 @@ export function createCicloCard(ciclo, handlers) {
             <button data-action="view-details" class="btn-primary btn-base flex-grow sm:flex-grow-0 font-semibold py-2 px-3 rounded-lg text-sm">Ver Detalles</button>
         </div>
     `;
-    card.querySelector('[data-action="edit-ciclo"]').addEventListener('click', () => handlers.openCicloModal(ciclo));
+    card.querySelector('[data-action="edit-ciclo"]').addEventListener('click', () => handlers.openCicloModal(ciclo, null, null, handlers));
     card.querySelector('[data-action="delete-ciclo"]').addEventListener('click', () => handlers.deleteCiclo(ciclo.id, ciclo.name));
     card.querySelector('[data-action="view-details"]').addEventListener('click', () => handlers.showCicloDetails(ciclo));
     card.querySelector('[data-action="move-ciclo"]').addEventListener('click', (e) => {
@@ -773,7 +981,7 @@ export function createLogEntry(log, ciclo, handlers) {
         borderColorClass = 'border-green-400';
         details = `<p class="font-semibold text-green-400">Poda: ${log.podaType || ''}</p>`;
         if(log.clonesCount) details += `<p class="text-sm text-gray-500 dark:text-gray-300">Se sacaron ${log.clonesCount} clones.</p>`;
-    } else if (log.type === 'Trasplante') { // NUEVO
+    } else if (log.type === 'Trasplante') { 
         borderColorClass = 'border-teal-400';
         details = `<p class="font-semibold text-teal-400">Trasplante</p>
                          <p class="text-sm text-gray-500 dark:text-gray-300 mt-1">${log.details || 'Sin detalles.'}</p>`;
@@ -817,17 +1025,14 @@ export function renderSalasGrid(salas, ciclos, handlers) {
         salaCard.className = 'card rounded-xl p-5 flex flex-col justify-between aspect-square relative';
         salaCard.dataset.salaId = sala.id;
         
-        // Contenedor para la lista de ciclos
         const ciclosPreviewContainer = document.createElement('div');
         ciclosPreviewContainer.className = 'ciclos-list space-y-1';
 
         if (activeCiclos.length > 0) {
             activeCiclos.forEach(ciclo => {
-                // Contenedor principal para cada fila de ciclo
                 const cicloItemContainer = document.createElement('div');
                 cicloItemContainer.className = 'ciclo-item-container';
 
-                // 1. Enlace principal (navegación)
                 const cicloLink = document.createElement('div');
                 cicloLink.className = 'ciclo-item-link';
                 cicloLink.onclick = () => handlers.showCicloDetails(ciclo);
@@ -853,12 +1058,10 @@ export function renderSalasGrid(salas, ciclos, handlers) {
                     <span class="ciclo-name">${ciclo.name}</span>
                 `;
 
-                // 2. Botón de acciones "..."
                 const actionsButton = document.createElement('button');
                 actionsButton.className = 'btn-base p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600';
                 actionsButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM12.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM18.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z" /></svg>`;
                 
-                // 3. Menú de acciones (oculto)
                 const actionsMenu = document.createElement('div');
                 actionsMenu.className = 'ciclo-actions-menu hidden';
                 actionsMenu.innerHTML = `
@@ -876,13 +1079,11 @@ export function renderSalasGrid(salas, ciclos, handlers) {
                     </a>
                 `;
                 
-                // Asignar eventos
                 actionsButton.onclick = (e) => handlers.handleToggleCicloMenu(e, actionsMenu);
-                actionsMenu.querySelector('[data-action="edit-ciclo"]').onclick = () => handlers.openCicloModal(ciclo);
+                actionsMenu.querySelector('[data-action="edit-ciclo"]').onclick = () => handlers.openCicloModal(ciclo, null, null, handlers);
                 actionsMenu.querySelector('[data-action="move-ciclo"]').onclick = () => handlers.openMoveCicloModal(ciclo.id);
                 actionsMenu.querySelector('[data-action="delete-ciclo"]').onclick = () => handlers.deleteCiclo(ciclo.id, ciclo.name);
 
-                // Ensamblar la fila
                 cicloItemContainer.appendChild(cicloLink);
                 cicloItemContainer.appendChild(actionsButton);
                 cicloItemContainer.appendChild(actionsMenu);
@@ -912,10 +1113,8 @@ export function renderSalasGrid(salas, ciclos, handlers) {
                 </button>
             </div>
         `;
-        // Insertamos el contenedor de ciclos en la tarjeta
         salaCard.querySelector('.flex-grow.relative').appendChild(ciclosPreviewContainer);
 
-        // Asignamos eventos de la tarjeta de sala
         salaCard.querySelector('[data-action="open-sala"]').addEventListener('click', (e) => {
             handlers.showCiclosView(sala.id, sala.name);
         });
@@ -929,7 +1128,7 @@ export function renderSalasGrid(salas, ciclos, handlers) {
         });
         salaCard.querySelector('[data-action="quick-add-ciclo"]').addEventListener('click', (e) => {
             e.stopPropagation();
-            handlers.openCicloModal(null, null, e.currentTarget.dataset.salaId);
+            handlers.openCicloModal(null, null, e.currentTarget.dataset.salaId, handlers);
         });
         salasGrid.appendChild(salaCard);
     });
@@ -950,7 +1149,6 @@ export function renderGeneticsList(genetics, handlers) {
         geneticCard.className = 'card p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center';
         geneticCard.dataset.id = g.id;
 
-        // MODIFICADO: Se reemplaza el emoji por un botón con SVG
         const favoriteIconHTML = `
             <button data-action="toggle-favorite" data-id="${g.id}" class="btn-base p-1 rounded-full text-gray-400 hover:bg-yellow-100 dark:hover:bg-gray-700" title="Marcar como favorita">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 ${g.favorita ? 'text-yellow-400' : 'text-gray-400'}">
@@ -980,7 +1178,6 @@ export function renderGeneticsList(genetics, handlers) {
     });
     geneticsList.querySelectorAll('[data-action="edit-genetic"]').forEach(btn => btn.addEventListener('click', (e) => handlers.editGenetic(e.currentTarget.dataset.id)));
     geneticsList.querySelectorAll('[data-action="delete-genetic"]').forEach(btn => btn.addEventListener('click', (e) => handlers.deleteGenetic(e.currentTarget.dataset.id)));
-    // AÑADIDO: Listener para el nuevo botón de favorito
     geneticsList.querySelectorAll('[data-action="toggle-favorite"]').forEach(btn => btn.addEventListener('click', (e) => handlers.handleToggleFavorite(e.currentTarget.dataset.id)));
 }
 
@@ -998,7 +1195,6 @@ export function renderGeneticsListCompact(genetics, handlers) {
         item.className = 'compact-list-item flex justify-between items-center';
         item.dataset.id = g.id;
 
-        // MODIFICADO: Se reemplaza el emoji por un botón con SVG
         const favoriteIconHTML = `
             <button data-action="toggle-favorite" data-id="${g.id}" class="btn-base p-1 rounded-full text-gray-400 hover:bg-yellow-100 dark:hover:bg-gray-700" title="Marcar como favorita">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 ${g.favorita ? 'text-yellow-400' : 'text-gray-400'}">
@@ -1028,7 +1224,6 @@ export function renderGeneticsListCompact(genetics, handlers) {
     });
     geneticsList.querySelectorAll('[data-action="edit-genetic"]').forEach(btn => btn.addEventListener('click', (e) => handlers.editGenetic(e.currentTarget.dataset.id)));
     geneticsList.querySelectorAll('[data-action="delete-genetic"]').forEach(btn => btn.addEventListener('click', (e) => handlers.deleteGenetic(e.currentTarget.dataset.id)));
-    // AÑADIDO: Listener para el nuevo botón de favorito
     geneticsList.querySelectorAll('[data-action="toggle-favorite"]').forEach(btn => btn.addEventListener('click', (e) => handlers.handleToggleFavorite(e.currentTarget.dataset.id)));
 }
 
@@ -1333,7 +1528,7 @@ export function initializeEventListeners(handlers) {
     menuAddSalaLink.innerHTML = "Añadir Sala " + createTooltipIcon("Una Sala es tu espacio físico de cultivo, como una carpa o un indoor. Dentro de las salas organizarás tus Ciclos.");
     menuAddSalaLink.addEventListener('click', (e) => { e.preventDefault(); handlers.openSalaModal(); getEl('dropdownMenu').classList.add('hidden'); });
     
-    getEl('menuAddCiclo').addEventListener('click', (e) => { e.preventDefault(); handlers.openCicloModal(); getEl('dropdownMenu').classList.add('hidden'); });
+    getEl('menuAddCiclo').addEventListener('click', (e) => { e.preventDefault(); handlers.openCicloModal(null, null, null, handlers); getEl('dropdownMenu').classList.add('hidden'); });
     getEl('menuTools').addEventListener('click', (e) => { e.preventDefault(); handlers.showToolsView(); getEl('dropdownMenu').classList.add('hidden'); });
     getEl('menuSettings').addEventListener('click', (e) => { e.preventDefault(); handlers.showSettingsView(); getEl('dropdownMenu').classList.add('hidden'); });
     
@@ -1343,6 +1538,8 @@ export function initializeEventListeners(handlers) {
         if (e.target.closest('#cancelSalaBtn')) getEl('salaModal').style.display = 'none';
         if (e.target.closest('#cancelCicloBtn')) getEl('cicloModal').style.display = 'none';
         if (e.target.closest('#cancelLogBtn')) getEl('logModal').style.display = 'none';
+        // NUEVO: Cerrar el modal selector de genéticas
+        if (e.target.closest('#cancelGeneticsSelector')) getEl('geneticsSelectorModal').style.display = 'none';
         if (e.target.closest('#cancelMoveCicloBtn')) getEl('moveCicloModal').style.display = 'none';
         if (e.target.closest('#cancelGerminateBtn')) getEl('germinateSeedModal').style.display = 'none';
         if (e.target.closest('#closeAboutBtn')) getEl('aboutModal').style.display = 'none';

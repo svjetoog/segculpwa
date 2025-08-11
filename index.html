@@ -31,15 +31,11 @@
     .dark body {
         background-color: #171717;
     }
-
-    /* Estilo para el elemento fantasma durante el drag & drop */
     .sortable-ghost {
         opacity: 0.4;
         background-color: #fbbf24 !important;
     }
-
     .modal-backdrop { background-color: rgba(0, 0, 0, 0.75); }
-
     .card { 
         background-color: #ffffff; 
         border: 1px solid #e5e7eb;
@@ -54,11 +50,9 @@
         border-color: #fbbf24; 
         box-shadow: 0 0 10px rgba(251, 191, 36, 0.6), 0 0 20px rgba(251, 191, 36, 0.4); 
     }
-
     .ciclos-list { display: flex; flex-direction: column; gap: 0.35rem; }
-    
     .ciclo-item-container {
-    position: relative; /* Clave para posicionar el menú */
+    position: relative;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -67,7 +61,7 @@
     transition: background-color 0.2s ease-out;
     }
     .ciclo-item-container:hover {
-        background-color: #f3f4f6; /* Un sutil efecto de hover */
+        background-color: #f3f4f6;
     }
     .dark .ciclo-item-container:hover {
         background-color: #404040;
@@ -78,7 +72,7 @@
         gap: 0.5rem;
         cursor: pointer;
         flex-grow: 1;
-        min-width: 0; /* Evita que el contenedor se desborde */
+        min-width: 0;
     }
     .ciclo-item-link .ciclo-name {
         white-space: nowrap;
@@ -94,23 +88,21 @@
         width: 0.65rem;
         height: 0.65rem;
         border-radius: 9999px;
-        flex-shrink: 0; /* Evita que el punto se encoja */
+        flex-shrink: 0;
         border: 1px solid rgba(0,0,0,0.5);
     }
-    /* Mantenemos tus clases de colores existentes */
     .ciclo-status-dot.vegetativo { background-color: #4ade80; }
     .ciclo-status-dot.pre-flora { background-color: #c084fc; }
     .ciclo-status-dot.flora { background-color: #f472b6; }
     .ciclo-status-dot.maduracion { background-color: #fb923c; }
     .ciclo-status-dot.lavado { background-color: #60a5fa; }
     .ciclo-status-dot.secado { background-color: #facc15; }
-
     .ciclo-actions-menu {
         position: absolute;
         right: 0;
         top: 100%;
         margin-top: 0.25rem;
-        z-index: 30; /* Asegura que esté por encima de otros elementos */
+        z-index: 30;
         width: 160px;
         background-color: #ffffff;
         border: 1px solid #e5e7eb;
@@ -123,7 +115,6 @@
         background-color: #262626;
         border-color: #404040;
     }
-    /* Para la animación de aparición */
     .ciclo-actions-menu.hidden {
         transform: scale(0.95);
         opacity: 0;
@@ -147,7 +138,6 @@
     .dark .ciclo-actions-menu a:hover {
         background-color: #525252;
     }
-
     .compact-list-item {
         background-color: #ffffff;
         border: 1px solid #e5e7eb;
@@ -163,7 +153,6 @@
         border-color: #f59e0b;
         transform: translateY(-2px);
     }
-    
     .tag {
         display: inline-block;
         padding: 0.25rem 0.75rem;
@@ -178,17 +167,14 @@
     .tag-custom { border: 1px dashed #fbbf24; color: #fbbf24; }
     .dark .tag-custom { border-color: #facc15; color: #facc15; }
     .tag:hover { transform: scale(1.05); }
-
-
-    #salaModal > div, #cicloModal > div, #logModal > div, #addWeekModal > div, #aiSummaryModal > div, #authView form, #toolsView .card, #germinateSeedModal > div, #addGeneticsToCicloModal > div, #moveCicloModal > div, #settingsView .card, #confirmationModal > div, #aboutModal > div, #finalizarCicloModal > div { 
+    #salaModal > div, #cicloModal > div, #logModal > div, #addWeekModal > div, #aiSummaryModal > div, #authView form, #toolsView .card, #germinateSeedModal > div, #addGeneticsToCicloModal > div, #moveCicloModal > div, #settingsView .card, #confirmationModal > div, #aboutModal > div, #finalizarCicloModal > div, #geneticsSelectorModal > div { 
         background-color: #ffffff; 
         border: 1px solid #d1d5db;
     }
-    .dark #salaModal > div, .dark #cicloModal > div, .dark #logModal > div, .dark #addWeekModal > div, .dark #aiSummaryModal > div, .dark #authView form, .dark #toolsView .card, .dark #germinateSeedModal > div, .dark #addGeneticsToCicloModal > div, .dark #moveCicloModal > div, .dark #settingsView .card, .dark #confirmationModal > div, .dark #aboutModal > div, .dark #finalizarCicloModal > div {
+    .dark #salaModal > div, .dark #cicloModal > div, .dark #logModal > div, .dark #addWeekModal > div, .dark #aiSummaryModal > div, .dark #authView form, .dark #toolsView .card, .dark #germinateSeedModal > div, .dark #addGeneticsToCicloModal > div, .dark #moveCicloModal > div, .dark #settingsView .card, .dark #confirmationModal > div, .dark #aboutModal > div, .dark #finalizarCicloModal > div, .dark #geneticsSelectorModal > div {
         background-color: #262626; 
         border: 1px solid #404040;
     }
-
     .btn-primary, #authView button[type="submit"] { background-color: #f59e0b; color: #111827; font-weight: 600; }
     .btn-primary:hover, #authView button[type="submit"]:hover { background-color: #d97706; }
     .btn-secondary { background-color: #e5e7eb; color: #1f2937; font-weight: 500; }
@@ -198,12 +184,10 @@
     .btn-danger { background-color: #ef4444; color: #ffffff; font-weight: 500; }
     .btn-danger:hover { background-color: #dc2626; }
     .btn-base { transition: all 0.15s ease-in-out; } .btn-base:hover { transform: scale(1.05); filter: brightness(1.1); } .btn-base:active { transform: scale(0.98); filter: brightness(0.9); }
-    
     .week-header { background-color: #e5e7eb; }
     .dark .week-header { background-color: #404040; }
     .log-entry { border-left: 4px solid #f59e0b; background-color: #ffffff; }
     .dark .log-entry { background-color: #262626; }
-
     input, select, textarea { 
         background-color: #f9fafb !important;
         border-color: #d1d5db !important;
@@ -216,27 +200,23 @@
     }
     input::placeholder { color: #6b7280 !important; }
     .dark input::placeholder { color: #a3a3a3 !important; }
-
     .spinner { border: 4px solid rgba(0, 0, 0, 0.1); border-radius: 50%; border-top: 4px solid #4b5563; width: 24px; height: 24px; animation: spin 1s linear infinite; }
     .dark .spinner { border: 4px solid rgba(255, 255, 255, 0.3); border-top: 4px solid #fff; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-    
     #notification-container { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 200; display: none; padding: 12px 24px; border-radius: 8px; color: white; font-weight: 600; box-shadow: 0 4px 15px rgba(0,0,0,0.5); animation: fadeInOut 4s ease-in-out; }
     #notification-container.success { background-color: #22c55e; }
     #notification-container.error { background-color: #ef4444; }
     @keyframes fadeInOut { 0% { opacity: 0; transform: translate(-50%, 20px); } 15% { opacity: 1; transform: translate(-50%, 0); } 85% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; transform: translate(-50%, 20px); } }
     .view-container { animation: fadeIn 0.4s ease-in-out; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
     .form-field-with-tooltip {
         display: flex;
         align-items: center;
-        gap: 0.5rem; /* 8px */
+        gap: 0.5rem;
     }
     .form-field-with-tooltip input {
         flex-grow: 1;
     }
-
     .timeline-principal {
         display: flex;
         width: 100%;
@@ -257,7 +237,6 @@
     .timeline-segment.active {
         background-color: #FFC107;
     }
-    
     .micro-timeline-container {
         width: 100%;
         height: 6px;
@@ -275,8 +254,6 @@
         border-radius: 3px;
         transition: width 0.5s ease-out;
     }
-
-    /* ✨ ESTILOS DEFINITIVOS PARA ONBOARDING ✨ */
     .shepherd-element.shepherd-theme-dark {
         background-color: #ffffff;
         border: 1px solid #e5e7eb;
@@ -307,8 +284,6 @@
     .shepherd-theme-dark .shepherd-button.shepherd-button-secondary:hover {
         background-color: #d1d5db;
     }
-
-    /* Sobreescribimos los estilos cuando la app está en modo oscuro */
     .dark .shepherd-element.shepherd-theme-dark {
         background-color: #262626;
         border: 1px solid #f59e0b;
@@ -334,8 +309,8 @@
         background-color: #404040;
     }
 	.dark .shepherd-theme-dark .shepherd-header {
-    background-color: #262626; /* Mismo color que el cuerpo para un look cohesivo */
-    border-bottom: 1px solid #404040; /* Pequeño separador opcional */
+    background-color: #262626; 
+    border-bottom: 1px solid #404040; 
 }
     </style>
 </head>
@@ -447,20 +422,12 @@
                  Grupo Telegram
             </a>
             <div class="text-xs text-gray-500 dark:text-gray-600 font-mono">
-                SegCul v0.4 by svjeto
+                SegCul v0.41 by svjeto
             </div>
         </footer>
     </div>
     
-    <div id="ciclosView" class="p-4 sm:p-6 lg:p-8 hidden">
-        <header class="flex justify-between items-center mb-8">
-            <h1 id="salaNameHeader" class="text-3xl font-bold text-amber-400 font-mono tracking-wider"></h1>
-            <button id="backToSalasBtn" class="btn-secondary btn-base py-2 px-4 rounded-lg">Volver a Salas</button>
-        </header>
-        <div id="ciclosGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"></div>
-        <div id="emptyCiclosState" class="text-center py-10 text-gray-500 dark:text-gray-400 hidden">No hay ciclos en esta sala.</div>
-    </div>
-
+    <div id="ciclosView" class="p-4 sm:p-6 lg:p-8 hidden"></div>
     <div id="cicloDetailView" class="p-4 sm:p-6 lg:p-8 hidden"></div>
     <div id="toolsView" class="p-4 sm:p-6 lg:p-8 hidden"></div>
     <div id="settingsView" class="p-4 sm:p-6 lg:p-8 hidden"></div>
@@ -474,6 +441,7 @@
     <div id="germinateSeedModal" class="fixed inset-0 modal-backdrop flex items-center justify-center z-50 p-4 hidden"></div>
     <div id="addGeneticsToCicloModal" class="fixed inset-0 modal-backdrop flex items-center justify-center z-50 p-4 hidden"></div>
     <div id="moveCicloModal" class="fixed inset-0 modal-backdrop flex items-center justify-center z-50 p-4 hidden"></div>
+    <div id="geneticsSelectorModal" class="fixed inset-0 modal-backdrop flex items-center justify-center z-50 p-4 hidden"></div>
     <div id="finalizarCicloModal" class="fixed inset-0 modal-backdrop flex items-center justify-center z-50 p-4 hidden">
         <div class="w-11/12 md:w-full max-w-lg p-6 rounded-lg shadow-lg max-h-[90vh] overflow-y-auto">
             <form id="finalizarCicloForm">
@@ -483,25 +451,19 @@
                         <label for="peso-seco" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Peso en Seco (gramos)</label>
                         <input type="number" id="peso-seco" step="0.1" required class="w-full p-2 rounded-md focus:ring-amber-500 focus:border-amber-500">
                     </div>
-
                     <div>
                         <h3 class="text-lg font-medium text-gray-800 dark:text-gray-200 mb-2">Etiquetas Globales</h3>
-                        <div id="global-tags-container" class="flex flex-wrap gap-2">
-                            </div>
+                        <div id="global-tags-container" class="flex flex-wrap gap-2"></div>
                     </div>
-
                     <div>
                         <h3 class="text-lg font-medium text-gray-800 dark:text-gray-200 mb-2">Etiquetas Personalizadas</h3>
-                        <div id="custom-tags-container" class="flex flex-wrap gap-2 mb-2">
-                            </div>
+                        <div id="custom-tags-container" class="flex flex-wrap gap-2 mb-2"></div>
                         <div id="add-custom-tag-container" class="flex gap-2 items-center">
                             <input type="text" id="custom-tag-input" placeholder="Escribe tu etiqueta..." class="flex-grow p-2 rounded-md focus:ring-amber-500 focus:border-amber-500" maxlength="30">
                             <button type="button" id="add-custom-tag-btn" class="btn-secondary btn-base py-2 px-3 rounded-md text-sm">Añadir</button>
                         </div>
                     </div>
-                    
                     <hr class="border-gray-300 dark:border-gray-600">
-
                     <div>
                         <h3 class="text-lg font-medium text-gray-800 dark:text-gray-200 mb-2">Feedback por Genética</h3>
                         <div id="geneticas-feedback-container" class="space-y-3">
@@ -533,7 +495,6 @@
             <h2 class="text-2xl font-bold mb-4 text-amber-400">¡Buenas!</h2>
             <div class="text-gray-700 dark:text-gray-300 space-y-3">
                 <p>Para que le agarres la mano a la app de una, acá esta la data de cómo está organizado. La cosa es simple, va por niveles:</p>
-                
                 <div class="space-y-2 pl-2">
                     <p><strong>1. Salas:</strong> Imaginate que son tus espacios: la carpa, el indoor, el balcón, el fondo... acá empieza todo. Creás una Sala para meterle los cultivos.</p>
                     <p><strong>2. Ciclos:</strong> Es cada cultivo que empezás. Un ciclo siempre va adentro de una Sala. Le ponés un nombre, decís si arranca en vege o flora y listo, a darle seguimiento.</p>

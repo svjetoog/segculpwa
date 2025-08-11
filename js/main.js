@@ -12,6 +12,8 @@ import {
     openSalaModal as uiOpenSalaModal,
     openCicloModal as uiOpenCicloModal,
     openLogModal as uiOpenLogModal,
+    // NUEVO: Importamos el nuevo modal selector
+    openGeneticsSelectorModal as uiOpenGeneticsSelectorModal,
     openGerminateModal as uiOpenGerminateModal,
     openMoveCicloModal as uiOpenMoveCicloModal,
     openFinalizarCicloModal as uiOpenFinalizarCicloModal,
@@ -57,38 +59,23 @@ function exportToCSV(data, filename) {
         showNotification('No hay datos para exportar.', 'error');
         return;
     }
-
-    // Crear las cabeceras del CSV a partir de las claves del primer objeto
     const headers = Object.keys(data[0]);
-    // Unir las cabeceras con comas para la primera fila del CSV
     const csvRows = [headers.join(',')];
-
-    // Recorrer cada fila de datos
     for (const row of data) {
         const values = headers.map(header => {
-            // Escapar comillas dobles dentro de los valores para no romper el CSV
             const escaped = ('' + row[header]).replace(/"/g, '""');
-            // Envolver cada valor en comillas dobles
             return `"${escaped}"`;
         });
         csvRows.push(values.join(','));
     }
-
-    // Unir todas las filas con saltos de línea
     const csvString = csvRows.join('\n');
-    // Crear un objeto Blob, que es como un archivo en memoria
     const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
-
-    // Crear un enlace temporal para descargar el archivo
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = filename;
-
-    // Simular un clic en el enlace para iniciar la descarga y luego eliminarlo
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-
     showNotification('Exportación generada con éxito.');
 }
 
@@ -127,14 +114,13 @@ function getPhaseInfo(phaseName) {
 
 function calculateVegetativeWeeks(startDateString) {
     const days = calculateDaysSince(startDateString);
-    if (days === null || days < 1) return []; // No empezar si no hay fecha o es futura
-
+    if (days === null || days < 1) return []; 
     const weekCount = Math.ceil(days / 7);
     const weeks = [];
     for (let i = 1; i <= weekCount; i++) {
         weeks.push({ weekNumber: i, phaseName: 'Vegetativo' });
     }
-    return weeks.length > 0 ? weeks : [{ weekNumber: 1, phaseName: 'Vegetativo' }]; // Asegura al menos 1 semana
+    return weeks.length > 0 ? weeks : [{ weekNumber: 1, phaseName: 'Vegetativo' }];
 }
 
 function generateStandardWeeks() {
@@ -396,50 +382,46 @@ const handlers = {
             });
     },
     handleExportCSV: () => {
-    // Generar un string con la fecha actual para el nombre del archivo
-    const now = new Date();
-    const dateString = `${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}`;
+        const now = new Date();
+        const dateString = `${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}`;
 
-    if (activeToolsTab === 'stock') {
-        // Mapear los datos de genéticas al formato deseado para el CSV de stock
-        const stockData = currentGenetics.map(g => ({
-            nombre: g.name,
-            banco: g.bank || 'N/A',
-            stock_clones: g.cloneStock || 0,
-            favorita: g.favorita ? 'Si' : 'No'
-        }));
-        exportToCSV(stockData, `stock_clones_${dateString}.csv`);
-    } else if (activeToolsTab === 'baulSemillas') {
-        // Mapear los datos de semillas al formato deseado
-        const seedData = currentSeeds.map(s => ({
-            nombre: s.name,
-            banco: s.bank || 'N/A',
-            cantidad: s.quantity || 0
-        }));
-        exportToCSV(seedData, `baul_semillas_${dateString}.csv`);
-    }
-},
-	handlePasarAFlora: (cicloId, cicloName) => {
-    handlers.showConfirmationModal(`¿Seguro que quieres pasar el ciclo "${cicloName}" a Floración? Esto establecerá la fecha de floración a hoy y generará las 9 semanas estándar.`, async () => {
-        try {
-            const cicloRef = doc(db, `users/${userId}/ciclos`, cicloId);
-            // Formatear la fecha de hoy como YYYY-MM-DD
-            const today = new Date();
-            const floweringStartDate = today.toISOString().split('T')[0];
-
-            await updateDoc(cicloRef, {
-                phase: 'Floración',
-                floweringStartDate: floweringStartDate,
-                floweringWeeks: generateStandardWeeks(),
-                vegetativeWeeks: null // Opcional: limpiar las semanas de vege
-            });
-            showNotification(`Ciclo "${cicloName}" ha pasado a Floración.`);
-        } catch (error) {
-            console.error("Error al pasar a floración:", error);
-            showNotification('Error al cambiar de fase.', 'error');
+        if (activeToolsTab === 'stock') {
+            const stockData = currentGenetics.map(g => ({
+                nombre: g.name,
+                banco: g.bank || 'N/A',
+                stock_clones: g.cloneStock || 0,
+                favorita: g.favorita ? 'Si' : 'No'
+            }));
+            exportToCSV(stockData, `stock_clones_${dateString}.csv`);
+        } else if (activeToolsTab === 'baulSemillas') {
+            const seedData = currentSeeds.map(s => ({
+                nombre: s.name,
+                banco: s.bank || 'N/A',
+                cantidad: s.quantity || 0
+            }));
+            exportToCSV(seedData, `baul_semillas_${dateString}.csv`);
         }
-    });
-},
+    },
+	handlePasarAFlora: (cicloId, cicloName) => {
+        handlers.showConfirmationModal(`¿Seguro que quieres pasar el ciclo "${cicloName}" a Floración? Esto establecerá la fecha de floración a hoy y generará las 9 semanas estándar.`, async () => {
+            try {
+                const cicloRef = doc(db, `users/${userId}/ciclos`, cicloId);
+                const today = new Date();
+                const floweringStartDate = today.toISOString().split('T')[0];
+
+                await updateDoc(cicloRef, {
+                    phase: 'Floración',
+                    floweringStartDate: floweringStartDate,
+                    floweringWeeks: generateStandardWeeks(),
+                    vegetativeWeeks: null 
+                });
+                showNotification(`Ciclo "${cicloName}" ha pasado a Floración.`);
+            } catch (error) {
+                console.error("Error al pasar a floración:", error);
+                showNotification('Error al cambiar de fase.', 'error');
+            }
+        });
+    },
     calculateDaysSince,
     getPhaseInfo,
     formatFertilizers,
@@ -501,32 +483,38 @@ const handlers = {
             }
         });
     },
+    // MODIFICADO: Ahora pasa el objeto handlers a la UI para poder conectar el botón del selector.
     openCicloModal: (ciclo = null, preselectedSalaId = null) => {
-        uiOpenCicloModal(ciclo, currentSalas, preselectedSalaId);
+        uiOpenCicloModal(ciclo, currentSalas, preselectedSalaId, handlers);
     },
+    // NUEVO: Handler que abre el modal selector de genéticas
+    openGeneticsSelector: (onConfirmCallback) => {
+        // Pasa los datos actuales y la función de callback a la UI.
+        uiOpenGeneticsSelectorModal(currentGenetics, currentSeeds, onConfirmCallback);
+    },
+    // MODIFICADO: Lógica de creación de ciclo completamente nueva.
     handleCicloFormSubmit: async (e) => {
         e.preventDefault();
         const form = e.target;
         const cicloId = form.dataset.id;
-        const cicloData = {
-            name: getEl('ciclo-name').value.trim(),
-            salaId: getEl('ciclo-sala-select').value,
-            phase: getEl('cicloPhase').value,
-            cultivationType: getEl('cultivationType').value,
-            vegetativeStartDate: getEl('vegetativeStartDate').value,
-            floweringStartDate: getEl('floweringStartDate').value,
-            notes: getEl('ciclo-notes').value.trim(),
-            estado: 'activo'
-        };
 
-        if (!cicloData.name || !cicloData.salaId) {
-            showNotification('Nombre y sala son obligatorios.', 'error');
-            return;
-        }
+        // Si estamos editando, usamos la lógica anterior (simplificada)
+        if (cicloId) {
+            const cicloData = {
+                name: getEl('ciclo-name').value.trim(),
+                salaId: getEl('ciclo-sala-select').value,
+                phase: getEl('cicloPhase').value,
+                cultivationType: getEl('cultivationType').value,
+                vegetativeStartDate: getEl('vegetativeStartDate').value,
+                floweringStartDate: getEl('floweringStartDate').value,
+                notes: getEl('ciclo-notes').value.trim(),
+            };
 
-        try {
-            if (cicloId) {
-                // CORREGIDO: Lógica para manejar el cambio de fase al editar
+            if (!cicloData.name || !cicloData.salaId) {
+                showNotification('Nombre y sala son obligatorios.', 'error');
+                return;
+            }
+            try {
                 const originalCiclo = currentCiclos.find(c => c.id === cicloId);
                 if (originalCiclo && originalCiclo.phase === 'Vegetativo' && cicloData.phase === 'Floración') {
                     cicloData.floweringWeeks = generateStandardWeeks();
@@ -537,19 +525,90 @@ const handlers = {
                 }
                 await updateDoc(doc(db, `users/${userId}/ciclos`, cicloId), cicloData);
                 showNotification('Ciclo actualizado.');
-            } else {
-                if (cicloData.phase === 'Floración') {
-                    cicloData.floweringWeeks = generateStandardWeeks();
-                } else if (cicloData.phase === 'Vegetativo') {
-                    cicloData.vegetativeWeeks = calculateVegetativeWeeks(cicloData.vegetativeStartDate);
-                }
-                await addDoc(collection(db, `users/${userId}/ciclos`), cicloData);
-                showNotification('Ciclo creado.');
+                getEl('cicloModal').style.display = 'none';
+            } catch (error) {
+                console.error("Error actualizando ciclo:", error);
+                showNotification('Error al actualizar el ciclo.', 'error');
             }
+            return;
+        }
+
+        // --- Lógica de CREACIÓN de ciclo con selección de genéticas ---
+        const geneticsDataInput = getEl('ciclo-genetics-data');
+        const selectedGenetics = geneticsDataInput.value ? JSON.parse(geneticsDataInput.value) : [];
+
+        if (selectedGenetics.length === 0) {
+            showNotification('Debes añadir al menos una genética al ciclo.', 'error');
+            return;
+        }
+        
+        const isPhenohunt = getEl('is-phenohunt').checked;
+        const cicloData = {
+            name: getEl('ciclo-name').value.trim(),
+            salaId: getEl('ciclo-sala-select').value,
+            phase: getEl('cicloPhase').value,
+            cultivationType: getEl('cultivationType').value,
+            vegetativeStartDate: getEl('vegetativeStartDate').value,
+            floweringStartDate: getEl('floweringStartDate').value,
+            notes: getEl('ciclo-notes').value.trim(),
+            estado: 'activo',
+            isPhenohunt: isPhenohunt,
+            genetics: [] // Se llenará a continuación
+        };
+
+        if (!cicloData.name || !cicloData.salaId) {
+            showNotification('Nombre y sala son obligatorios.', 'error');
+            return;
+        }
+        
+        try {
+            const batch = writeBatch(db);
+
+            // 1. Preparar el array de genéticas para el ciclo
+            if (isPhenohunt) {
+                selectedGenetics.forEach(item => {
+                    for (let i = 0; i < item.quantity; i++) {
+                        cicloData.genetics.push({
+                            id: item.id, // ID del origen (clon o semilla)
+                            name: `${item.name} #${i + 1}`,
+                            quantity: 1,
+                            source: item.source,
+                            phenoId: `${item.id}-${Date.now()}-${i}` // ID único para el individuo
+                        });
+                    }
+                });
+            } else {
+                cicloData.genetics = selectedGenetics;
+            }
+
+            // 2. Añadir semanas iniciales según la fase
+            if (cicloData.phase === 'Floración') {
+                cicloData.floweringWeeks = generateStandardWeeks();
+            } else if (cicloData.phase === 'Vegetativo') {
+                cicloData.vegetativeWeeks = calculateVegetativeWeeks(cicloData.vegetativeStartDate);
+            }
+
+            // 3. Añadir el nuevo ciclo al batch
+            const newCicloRef = doc(collection(db, `users/${userId}/ciclos`));
+            batch.set(newCicloRef, cicloData);
+
+            // 4. Actualizar el stock de clones y semillas en el batch
+            for (const item of selectedGenetics) {
+                const collectionName = item.source === 'clone' ? 'genetics' : 'seeds';
+                const stockField = item.source === 'clone' ? 'cloneStock' : 'quantity';
+                const itemRef = doc(db, `users/${userId}/${collectionName}`, item.id);
+                batch.update(itemRef, { [stockField]: increment(-item.quantity) });
+            }
+
+            // 5. Ejecutar todas las operaciones
+            await batch.commit();
+
+            showNotification('Ciclo creado con éxito. Stock actualizado.');
             getEl('cicloModal').style.display = 'none';
+
         } catch (error) {
-            console.error("Error guardando ciclo:", error);
-            showNotification('Error al guardar el ciclo.', 'error');
+            console.error("Error creando ciclo y actualizando stock:", error);
+            showNotification('Error al crear el ciclo.', 'error');
         }
     },
     deleteCiclo: (cicloId, cicloName) => {
@@ -601,25 +660,20 @@ const handlers = {
         currentSalaName = null;
     },
     handleToggleCicloMenu: (e, menuElement) => {
-    e.stopPropagation(); // ¡Muy importante! Evita que se dispare el clic de navegación.
-
-    // Primero, cierra todos los otros menús que puedan estar abiertos
-    document.querySelectorAll('.ciclo-actions-menu').forEach(menu => {
-        if (menu !== menuElement) {
-            menu.classList.add('hidden');
-        }
-    });
-
-    // Luego, abre o cierra el menú actual
-    menuElement.classList.toggle('hidden');
+        e.stopPropagation();
+        document.querySelectorAll('.ciclo-actions-menu').forEach(menu => {
+            if (menu !== menuElement) {
+                menu.classList.add('hidden');
+            }
+        });
+        menuElement.classList.toggle('hidden');
     },
-showCicloDetails: async (ciclo) => {
+    showCicloDetails: async (ciclo) => {
         if (logsUnsubscribe) logsUnsubscribe();
 
         const cicloRef = doc(db, `users/${userId}/ciclos`, ciclo.id);
         let needsUpdate = false;
 
-        // FIX 1: Calcular dinámicamente las semanas de vegetativo
         if (ciclo.phase === 'Vegetativo') {
             const calculatedWeeks = calculateVegetativeWeeks(ciclo.vegetativeStartDate);
             if (JSON.stringify(calculatedWeeks) !== JSON.stringify(ciclo.vegetativeWeeks)) {
@@ -628,13 +682,11 @@ showCicloDetails: async (ciclo) => {
             }
         }
         
-        // (Opcional) Migración para limpiar datos antiguos
         if (ciclo.phase === 'Floración' && ciclo.floweringWeeks && ciclo.floweringWeeks.some(w => w.phaseName === 'SECADO')) {
             ciclo.floweringWeeks = ciclo.floweringWeeks.filter(w => w.phaseName !== 'SECADO');
             needsUpdate = true;
         }
 
-        // Si se corrigieron datos, se actualiza la base de datos en segundo plano
         if (needsUpdate) {
             await updateDoc(cicloRef, { 
                 vegetativeWeeks: ciclo.vegetativeWeeks || null,
@@ -642,14 +694,12 @@ showCicloDetails: async (ciclo) => {
             }).catch(err => console.error("Error actualizando semanas del ciclo:", err));
         }
 
-        // Renderizar la vista con el objeto 'ciclo' ya corregido
         handlers.hideAllViews();
         const detailView = getEl('cicloDetailView');
-        detailView.innerHTML = renderCicloDetails(ciclo, handlers); // Llamada a la UI
+        detailView.innerHTML = renderCicloDetails(ciclo, handlers);
         detailView.classList.remove('hidden');
         detailView.classList.add('view-container');
 
-        // Añadir listeners a los botones recién creados
         getEl('backToCiclosBtn').addEventListener('click', () => {
             handlers.hideAllViews();
             getEl('app').classList.remove('hidden');
@@ -664,7 +714,6 @@ showCicloDetails: async (ciclo) => {
         const iniciarSecadoBtn = getEl('iniciar-secado-btn');
         if(iniciarSecadoBtn) iniciarSecadoBtn.addEventListener('click', () => handlers.handleIniciarSecado(ciclo.id, ciclo.name));
 
-        // Cargar logs para las semanas correspondientes
         let weeksToShow = [];
         if (ciclo.phase === 'Floración' && ciclo.floweringWeeks) {
             weeksToShow = ciclo.floweringWeeks;
@@ -714,9 +763,7 @@ showCicloDetails: async (ciclo) => {
         getEl('searchTools').addEventListener('input', handlers.handleToolsSearch);
         getEl('view-mode-card').addEventListener('click', () => handlers.handleViewModeToggle('card'));
         getEl('view-mode-list').addEventListener('click', () => handlers.handleViewModeToggle('list'));
-      getEl('view-mode-card').addEventListener('click', () => handlers.handleViewModeToggle('card'));
-      getEl('view-mode-list').addEventListener('click', () => handlers.handleViewModeToggle('list'));
-      getEl('exportCsvBtn').addEventListener('click', handlers.handleExportCSV); // <- AÑADIR ESTA LÍNEA
+        getEl('exportCsvBtn').addEventListener('click', handlers.handleExportCSV);
     },
     hideToolsView: () => {
         const view = getEl('toolsView');
@@ -752,34 +799,33 @@ showCicloDetails: async (ciclo) => {
         });
     },
     switchToolsTab: (newTab) => {
-    activeToolsTab = newTab;
-    ['genetics', 'stock', 'baulSemillas', 'historial'].forEach(tab => {
-        getEl(`${tab}Content`).classList.toggle('hidden', tab !== activeToolsTab);
-        getEl(`${tab}TabBtn`).classList.toggle('border-amber-400', tab === activeToolsTab);
-        getEl(`${tab}TabBtn`).classList.toggle('border-transparent', tab !== activeToolsTab);
-    });
+        activeToolsTab = newTab;
+        ['genetics', 'stock', 'baulSemillas', 'historial'].forEach(tab => {
+            getEl(`${tab}Content`).classList.toggle('hidden', tab !== activeToolsTab);
+            getEl(`${tab}TabBtn`).classList.toggle('border-amber-400', tab === activeToolsTab);
+            getEl(`${tab}TabBtn`).classList.toggle('border-transparent', tab !== activeToolsTab);
+        });
 
-    const searchTools = getEl('searchTools');
-    const viewMode = getEl('view-mode-toggle');
-    const exportBtn = getEl('exportCsvBtn'); // <- Referencia al nuevo botón
+        const searchTools = getEl('searchTools');
+        const viewMode = getEl('view-mode-toggle');
+        const exportBtn = getEl('exportCsvBtn');
 
-    if (newTab === 'historial') {
-        searchTools.placeholder = 'Buscar por genética, sala...';
-        viewMode.classList.add('hidden');
-        exportBtn.classList.add('hidden'); // Ocultar para el historial
-        renderHistorialView(currentHistorial, handlers);
-    } else {
-        searchTools.placeholder = 'Buscar por nombre...';
-        viewMode.classList.remove('hidden');
-        // Mostrar el botón solo para stock y semillas
-        if (newTab === 'stock' || newTab === 'baulSemillas') {
-             exportBtn.classList.remove('hidden');
+        if (newTab === 'historial') {
+            searchTools.placeholder = 'Buscar por genética, sala...';
+            viewMode.classList.add('hidden');
+            exportBtn.classList.add('hidden');
+            renderHistorialView(currentHistorial, handlers);
         } else {
-             exportBtn.classList.add('hidden'); // Ocultar para genéticas
+            searchTools.placeholder = 'Buscar por nombre...';
+            viewMode.classList.remove('hidden');
+            if (newTab === 'stock' || newTab === 'baulSemillas') {
+                 exportBtn.classList.remove('hidden');
+            } else {
+                 exportBtn.classList.add('hidden');
+            }
+            handlers.handleToolsSearch({ target: { value: '' } });
         }
-        handlers.handleToolsSearch({ target: { value: '' } });
-    }
-},
+    },
     handleToolsSearch: (e) => {
         const searchTerm = e.target.value.toLowerCase();
         let filteredData;
@@ -873,21 +919,21 @@ showCicloDetails: async (ciclo) => {
         }
     },
     handleToggleFavorite: async (id) => {
-    const genetic = currentGenetics.find(g => g.id === id);
-    if (!genetic) return;
+        const genetic = currentGenetics.find(g => g.id === id);
+        if (!genetic) return;
 
-    const newFavoriteState = !genetic.favorita;
-    const geneticRef = doc(db, `users/${userId}/genetics`, id);
+        const newFavoriteState = !genetic.favorita;
+        const geneticRef = doc(db, `users/${userId}/genetics`, id);
 
-    try {
-        await updateDoc(geneticRef, {
-            favorita: newFavoriteState
-        });
-        showNotification(`"${genetic.name}" ${newFavoriteState ? 'marcada como favorita.' : 'ya no es favorita.'}`);
-    } catch (error) {
-        console.error("Error updating favorite status:", error);
-        showNotification('Error al actualizar el estado de favorito.', 'error');
-    }
+        try {
+            await updateDoc(geneticRef, {
+                favorita: newFavoriteState
+            });
+            showNotification(`"${genetic.name}" ${newFavoriteState ? 'marcada como favorita.' : 'ya no es favorita.'}`);
+        } catch (error) {
+            console.error("Error updating favorite status:", error);
+            showNotification('Error al actualizar el estado de favorito.', 'error');
+        }
     },
     updateStock: async (id, amount) => {
         try {
@@ -1006,92 +1052,87 @@ showCicloDetails: async (ciclo) => {
         }
     },
     handleLogFormSubmit: async (e) => {
-    e.preventDefault();
-    const form = e.target;
-    const cicloId = form.dataset.cicloId;
-    const week = form.dataset.week;
+        e.preventDefault();
+        const form = e.target;
+        const cicloId = form.dataset.cicloId;
+        const week = form.dataset.week;
 
-    const logData = {
-        type: getEl('logType').value,
-        date: serverTimestamp(),
-        week: parseInt(week)
-    };
-    
-    // --- NUEVO: Variable para guardar la línea de fertis ---
-    let firstFertilizerLine = null;
+        const logData = {
+            type: getEl('logType').value,
+            date: serverTimestamp(),
+            week: parseInt(week)
+        };
+        
+        let firstFertilizerLine = null;
 
-    if (logData.type === 'Riego' || logData.type === 'Cambio de Solución') {
-        logData.ph = getEl('log-ph').value || null;
-        logData.ec = getEl('log-ec').value || null;
-        if (logData.type === 'Cambio de Solución') {
-            logData.litros = getEl('log-litros').value || null;
-        }
-
-        const fertilizersUsed = [];
-        document.querySelectorAll('.fert-line-block').forEach((block, index) => {
-            const selectedLine = block.querySelector('.fert-line-select').value;
-
-            // --- NUEVO: Capturamos la primera línea seleccionada ---
-            if (index === 0 && selectedLine) {
-                firstFertilizerLine = selectedLine;
+        if (logData.type === 'Riego' || logData.type === 'Cambio de Solución') {
+            logData.ph = getEl('log-ph').value || null;
+            logData.ec = getEl('log-ec').value || null;
+            if (logData.type === 'Cambio de Solución') {
+                logData.litros = getEl('log-litros').value || null;
             }
-            
-            if (selectedLine === 'Personalizada') {
-                block.querySelectorAll('.custom-fert-row').forEach(row => {
-                    const productName = row.querySelector('.fert-product-name').value.trim();
-                    const dose = row.querySelector('.fert-dose').value;
-                    if (productName && dose) {
-                        fertilizersUsed.push({
-                            productName: productName,
-                            dose: parseFloat(dose),
-                            unit: row.querySelector('.fert-unit').value
-                        });
-                    }
-                });
-            } else {
-                block.querySelectorAll('.product-row').forEach(row => {
-                    const dose = row.querySelector('.fert-dose').value;
-                    if (dose) {
-                        fertilizersUsed.push({
-                            productName: row.querySelector('.fert-dose').dataset.productName,
-                            dose: parseFloat(dose),
-                            unit: row.querySelector('.fert-unit').value
-                        });
-                    }
-                });
-            }
-        });
-        logData.fertilizers = fertilizersUsed;
 
-    } else if (logData.type === 'Control de Plagas') {
-        logData.notes = getEl('plagas-notes').value.trim();
-    } else if (logData.type === 'Podas') {
-        logData.podaType = getEl('podaType').value;
-        if (logData.podaType === 'Clones') {
-            logData.clonesCount = parseInt(getEl('clones-count').value) || 0;
-            // Lógica para actualizar el stock de clones si es necesario
-        }
-    } else if (logData.type === 'Trasplante') {
-        logData.details = getEl('trasplante-details').value.trim();
-    }
+            const fertilizersUsed = [];
+            document.querySelectorAll('.fert-line-block').forEach((block, index) => {
+                const selectedLine = block.querySelector('.fert-line-select').value;
 
-    try {
-        // Guardamos el log como siempre
-        await addDoc(collection(db, `users/${userId}/ciclos/${cicloId}/logs`), logData);
-
-        // --- NUEVO: Si se usó una línea de fertis, la guardamos en el ciclo ---
-        if (firstFertilizerLine) {
-            const cicloRef = doc(db, `users/${userId}/ciclos`, cicloId);
-            await updateDoc(cicloRef, {
-                lastUsedFertilizerLine: firstFertilizerLine
+                if (index === 0 && selectedLine) {
+                    firstFertilizerLine = selectedLine;
+                }
+                
+                if (selectedLine === 'Personalizada') {
+                    block.querySelectorAll('.custom-fert-row').forEach(row => {
+                        const productName = row.querySelector('.fert-product-name').value.trim();
+                        const dose = row.querySelector('.fert-dose').value;
+                        if (productName && dose) {
+                            fertilizersUsed.push({
+                                productName: productName,
+                                dose: parseFloat(dose),
+                                unit: row.querySelector('.fert-unit').value
+                            });
+                        }
+                    });
+                } else {
+                    block.querySelectorAll('.product-row').forEach(row => {
+                        const dose = row.querySelector('.fert-dose').value;
+                        if (dose) {
+                            fertilizersUsed.push({
+                                productName: row.querySelector('.fert-dose').dataset.productName,
+                                dose: parseFloat(dose),
+                                unit: row.querySelector('.fert-unit').value
+                            });
+                        }
+                    });
+                }
             });
+            logData.fertilizers = fertilizersUsed;
+
+        } else if (logData.type === 'Control de Plagas') {
+            logData.notes = getEl('plagas-notes').value.trim();
+        } else if (logData.type === 'Podas') {
+            logData.podaType = getEl('podaType').value;
+            if (logData.podaType === 'Clones') {
+                logData.clonesCount = parseInt(getEl('clones-count').value) || 0;
+            }
+        } else if (logData.type === 'Trasplante') {
+            logData.details = getEl('trasplante-details').value.trim();
         }
 
-        showNotification('Registro añadido.');
-        getEl('logModal').style.display = 'none';
-    } catch (error) {
-        console.error("Error guardando log:", error);
-        showNotification('Error al guardar el registro.', 'error');
+        try {
+            await addDoc(collection(db, `users/${userId}/ciclos/${cicloId}/logs`), logData);
+
+            if (firstFertilizerLine) {
+                const cicloRef = doc(db, `users/${userId}/ciclos`, cicloId);
+                await updateDoc(cicloRef, {
+                    lastUsedFertilizerLine: firstFertilizerLine
+                });
+            }
+
+            showNotification('Registro añadido.');
+            getEl('logModal').style.display = 'none';
+        } catch (error) {
+            console.error("Error guardando log:", error);
+            showNotification('Error al guardar el registro.', 'error');
         }
     },
     deleteLog: (cicloId, logId) => {
@@ -1182,7 +1223,6 @@ showCicloDetails: async (ciclo) => {
             showNotification('Error al añadir la semana.', 'error');
         }
     },
-    // NUEVO: Handler para eliminar la última semana de un ciclo.
     handleDeleteLastWeek: async (cicloId) => {
         try {
             const cicloRef = doc(db, `users/${userId}/ciclos`, cicloId);
@@ -1204,14 +1244,12 @@ showCicloDetails: async (ciclo) => {
                 try {
                     const batch = writeBatch(db);
 
-                    // 1. Eliminar logs de la última semana
                     const logsQuery = query(collection(db, `users/${userId}/ciclos/${cicloId}/logs`), where("week", "==", lastWeekNumber));
                     const logsSnapshot = await getDocs(logsQuery);
                     logsSnapshot.forEach(logDoc => {
                         batch.delete(logDoc.ref);
                     });
 
-                    // 2. Actualizar el ciclo para remover la última semana
                     const updatedWeeks = currentWeeks.slice(0, -1);
                     batch.update(cicloRef, { [weeksArrayName]: updatedWeeks });
 
