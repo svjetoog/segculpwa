@@ -853,7 +853,6 @@ export function renderToolsView() {
                 <button id="geneticsTabBtn" class="py-4 px-1 border-b-2 font-medium text-lg text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:border-gray-400 dark:hover:border-gray-300 whitespace-nowrap btn-base">Genéticas</button>
                 <button id="stockTabBtn" class="py-4 px-1 border-b-2 font-medium text-lg text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:border-gray-400 dark:hover:border-gray-300 whitespace-nowrap btn-base">Stock Clones</button>
                 <button id="baulSemillasTabBtn" class="py-4 px-1 border-b-2 font-medium text-lg text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:border-gray-400 dark:hover:border-gray-300 whitespace-nowrap btn-base">Baúl de Semillas</button>
-                {/* --- NUEVO: Pestaña de Phenohunting --- */}
                 <button id="phenohuntTabBtn" class="py-4 px-1 border-b-2 font-medium text-lg text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:border-gray-400 dark:hover:border-gray-300 whitespace-nowrap btn-base">Phenohunting</button>
                 <button id="historialTabBtn" class="py-4 px-1 border-b-2 font-medium text-lg text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:border-gray-400 dark:hover:border-gray-300 whitespace-nowrap btn-base">Historial</button>
             </nav>
@@ -889,7 +888,6 @@ export function renderToolsView() {
             <div id="baulSemillasList" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 </div>
         </div>
-        {/* --- NUEVO: Contenedor para el contenido de Phenohunting --- */}
         <div id="phenohuntContent" class="hidden">
             <div id="phenohuntList" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                  <p class="text-center text-gray-500 dark:text-gray-400 col-span-full">Cargando cacerías activas...</p>
