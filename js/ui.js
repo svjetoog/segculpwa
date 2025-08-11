@@ -321,15 +321,16 @@ export function openGeneticsSelectorModal(allGenetics, allSeeds, onConfirm) {
                 <input type="number" min="1" max="${stock || 0}" value="1" disabled class="w-full p-1 rounded-md selector-quantity">
             </div>
             <div class="col-span-3 flex items-center justify-end">
-                 <label class="flex items-center gap-2 text-xs cursor-pointer">
-                    <input type="checkbox" disabled class="h-4 w-4 rounded text-amber-500 focus:ring-amber-500 selector-individual-checkbox">
-                    Individual
-                </label>
+                <button type="button" disabled class="btn-base btn-secondary text-xs py-1 px-3 rounded-full selector-tracking-btn">
+                    Grupo
+                </button>
             </div>
         `;
+
         const mainCheckbox = div.querySelector('.selector-checkbox');
         const quantityInput = div.querySelector('.selector-quantity');
-        const individualCheckbox = div.querySelector('.selector-individual-checkbox');
+        const trackingBtn = div.querySelector('.selector-tracking-btn');
+        let trackIndividually = false;
 
         const handleUpdate = () => {
             const itemData = { 
@@ -337,7 +338,7 @@ export function openGeneticsSelectorModal(allGenetics, allSeeds, onConfirm) {
                 name: item.name, 
                 source,
                 quantity: parseInt(quantityInput.value) || 1,
-                trackIndividually: individualCheckbox.checked
+                trackIndividually: trackIndividually
             };
             updateSelectionState(itemData, mainCheckbox.checked);
         };
@@ -345,13 +346,26 @@ export function openGeneticsSelectorModal(allGenetics, allSeeds, onConfirm) {
         mainCheckbox.addEventListener('change', (e) => {
             const isChecked = e.target.checked;
             quantityInput.disabled = !isChecked;
-            individualCheckbox.disabled = !isChecked;
+            trackingBtn.disabled = !isChecked;
             if (isChecked) quantityInput.focus();
             handleUpdate();
         });
         
         quantityInput.addEventListener('input', handleUpdate);
-        individualCheckbox.addEventListener('change', handleUpdate);
+        
+        trackingBtn.addEventListener('click', () => {
+            trackIndividually = !trackIndividually;
+            
+            trackingBtn.classList.toggle('btn-secondary');
+            trackingBtn.classList.toggle('btn-primary');
+            
+            if (trackIndividually) {
+                trackingBtn.innerHTML = `🧬 Phenohunt`;
+            } else {
+                trackingBtn.innerHTML = 'Grupo';
+            }
+            handleUpdate();
+        });
 
         return div;
     };
