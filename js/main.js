@@ -296,24 +296,25 @@ function loadCiclos() {
     const q = query(collection(db, `users/${userId}/ciclos`));
     if (ciclosUnsubscribe) ciclosUnsubscribe();
     ciclosUnsubscribe = onSnapshot(q, (snapshot) => {
+        // `currentCiclos` ahora solo contendrá los que están 'activos' o 'en_curado', pero no los 'finalizados'.
         currentCiclos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter(c => c.estado !== 'finalizado');
         
-        const searchInput = getEl('searchSalas');
-        if (searchInput && searchInput.value) {
-            const searchTerm = searchInput.value.toLowerCase();
-            const filteredSalas = currentSalas.filter(sala => sala.name.toLowerCase().includes(searchTerm));
-            renderSalasGrid(filteredSalas, currentCiclos, handlers);
-        } else {
-            renderSalasGrid(currentSalas, currentCiclos, handlers);
+        // Si el dashboard es la vista activa, lo refrescamos con los datos actualizados.
+        if (!getEl('app').classList.contains('hidden')) {
+            handlers.showDashboard();
         }
-
-        if (!getEl('ciclosView').classList.contains('hidden')) handlers.showCiclosView(currentSalaId, currentSalaName);
+        
+        // Si la vista de detalle de un ciclo está activa, la refrescamos.
         if (!getEl('cicloDetailView').classList.contains('hidden')) {
             const activeCicloId = getEl('cicloDetailView').querySelector('[data-ciclo-id]')?.dataset.cicloId;
             if (activeCicloId) {
                 const updatedCiclo = currentCiclos.find(c => c.id === activeCicloId);
-                if (updatedCiclo) handlers.showCicloDetails(updatedCiclo);
-                else handlers.hideCicloDetails();
+                if (updatedCiclo) {
+                    handlers.showCicloDetails(updatedCiclo);
+                } else {
+                    // Si el ciclo ya no se encuentra en la lista activa (ej. se finalizó), volvemos al panel.
+                    handlers.hideCicloDetails();
+                }
             }
         }
     });
@@ -484,7 +485,125 @@ const handlers = {
     openSetupWizard: () => {
         uiOpenSetupWizardModal(handlers);
     },
+    showDashboard: async () => {
+    handlers.hideAllViews();
+    const appView = getEl('app');
+    appView.classList.remove('hidden');
+    appView.classList.add('view-container');
 
+    // 1. Calcular Estadísticas
+    const stats = [
+        { 
+            label: 'Ciclos Activos', 
+            value: currentCiclos.length,
+            icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h5M20 20v-5h-5" /><path stroke-linecap="round" stroke-linejoin="round" d="M4 9a9 9 0 0114.65-5.35L20 5" /><path stroke-linecap="round" stroke-linejoin="round" d="M20 15a9 9 0 01-14.65 5.35L4 19" /></svg>`,
+            color: 'amber'
+        },
+        { 
+            label: 'Clones en Stock', 
+            value: currentGenetics.reduce((sum, g) => sum + (g.cloneStock || 0), 0),
+            icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7v8a2 2 0 002 2h4M8 7a2 2 0 012-2h4a2 2 0 012 2v8a2 2 0 01-2 2h-4a2 2 0 01-2-2V7z" /></svg>`,
+            color: 'cyan'
+        }
+    ];
+
+    // 2. Obtener Actividad Reciente (aquí usaremos una consulta más avanzada)
+const recentActivity = [];
+    try {
+        const logsQuery = query(
+            collectionGroup(db, 'logs'), 
+            where('__name__', '>=', `users/${userId}/`), // Limita la búsqueda solo a los logs del usuario actual
+            orderBy('date', 'desc'), 
+            limit(3)
+        );
+        const logsSnapshot = await getDocs(logsQuery);
+
+        // Función auxiliar para formatear el tiempo transcurrido
+        const formatTimeAgo = (date) => {
+            const now = new Date();
+            const seconds = Math.floor((now - date) / 1000);
+            let interval = seconds / 31536000;
+            if (interval > 1) return `hace ${Math.floor(interval)} años`;
+            interval = seconds / 2592000;
+            if (interval > 1) return `hace ${Math.floor(interval)} meses`;
+            interval = seconds / 86400;
+            if (interval > 1) return `hace ${Math.floor(interval)} días`;
+            interval = seconds / 3600;
+            if (interval > 1) return `hace ${Math.floor(interval)} horas`;
+            interval = seconds / 60;
+            if (interval > 1) return `hace ${Math.floor(interval)} minutos`;
+            return 'hace unos segundos';
+        };
+
+        // Función auxiliar para formatear la descripción del log
+        const formatLog = (log) => {
+            switch (log.type) {
+                case 'Riego': return { icon: '💧', description: 'Riego' + (log.fertilizers && log.fertilizers.length > 0 ? ' con fertis' : '') };
+                case 'Cambio de Solución': return { icon: '💧', description: 'Cambio de Solución' };
+                case 'Control de Plagas': return { icon: '🐞', description: 'Control de Plagas' };
+                case 'Podas': return { icon: '✂️', description: `Poda (${log.podaType})` };
+                default: return { icon: '📝', description: log.type };
+            }
+        };
+
+        for (const logDoc of logsSnapshot.docs) {
+            const logData = logDoc.data();
+            const cicloId = logDoc.ref.parent.parent.id; // Obtenemos el ID del ciclo padre del log
+            const ciclo = currentCiclos.find(c => c.id === cicloId);
+            
+            if (ciclo) {
+                const formattedLog = formatLog(logData);
+                recentActivity.push({
+                    ...formattedLog,
+                    cicloName: ciclo.name,
+                    timeAgo: formatTimeAgo(logData.date.toDate())
+                });
+            }
+        }
+    } catch (error) {
+        console.error("Error al obtener la actividad reciente:", error);
+    }    // Esta parte la dejaremos pendiente para conectar con Firebase, por ahora mostramos el array vacío.
+    const curingJars = currentCiclos
+        .filter(c => c.estado === 'en_curado')
+        .sort((a, b) => b.fechaInicioCurado.toDate() - a.fechaInicioCurado.toDate()) // Ordenar por más reciente primero
+        .slice(0, 3);
+    // 3. Renderizar el Dashboard
+    renderDashboard(stats, recentActivity, curingJars);     
+    // 4. Re-asignar listeners a los botones del nuevo header
+    getEl('logoutBtn').addEventListener('click', () => handlers.signOut());
+    getEl('menuBtn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        getEl('dropdownMenu').classList.toggle('hidden');
+    });
+    getEl('menuAddSala').addEventListener('click', (e) => { e.preventDefault(); handlers.openSalaModal(); getEl('dropdownMenu').classList.add('hidden'); });
+    getEl('menuAddCiclo').addEventListener('click', (e) => { e.preventDefault(); handlers.openCicloModal(null, null, null, handlers); getEl('dropdownMenu').classList.add('hidden'); });
+    getEl('menuSetupWizard').addEventListener('click', (e) => { e.preventDefault(); handlers.openSetupWizard(); getEl('dropdownMenu').classList.add('hidden'); });
+    getEl('menuTools').addEventListener('click', (e) => { e.preventDefault(); handlers.showToolsView(); getEl('dropdownMenu').classList.add('hidden'); });
+    getEl('menuSettings').addEventListener('click', (e) => { e.preventDefault(); handlers.showSettingsView(); getEl('dropdownMenu').classList.add('hidden'); });
+    getEl('aboutBtn').addEventListener('click', () => getEl('aboutModal').style.display = 'flex');
+    
+    // Listener para el enlace "Mi Cultivo ->" que te lleva a la vista de salas (aún por crear)
+    getEl('navigateToSalas').addEventListener('click', (e) => {
+        e.preventDefault();
+        // Aquí podríamos llamar a una función que muestre la vista de salas, por ahora un placeholder:
+            showNotification("Vista de Salas próximamente.", "success");
+        });
+    },
+    handleFinishCuring: (cicloId, cicloName) => {
+        handlers.showConfirmationModal(`¿Seguro que querés dar por finalizado el frasco de "${cicloName}"? El ciclo se moverá a tu historial de forma permanente.`, async () => {
+            try {
+                const cicloRef = doc(db, `users/${userId}/ciclos`, cicloId);
+                await updateDoc(cicloRef, {
+                    estado: 'finalizado',
+                    fechaFinalizacion: serverTimestamp()
+                });
+                showNotification(`El frasco de "${cicloName}" fue movido al historial.`);
+            } catch (error) {
+                console.error("Error finalizando el curado:", error);
+                showNotification('Error al finalizar el frasco.', 'error');
+            }
+        });
+    },
     handleWizardStep1Next: async () => {
         const textarea = getEl('wizard-salas-textarea');
         const salaNames = textarea.value.split('\n').map(s => s.trim()).filter(s => s !== '');
@@ -1290,9 +1409,9 @@ handlePhenoCardUpdate: async (e) => {
         getEl('add-bulk-btn').addEventListener('click', handlers.openBulkAddModal);
         getEl('add-to-catalog-btn').addEventListener('click', handlers.openAddToCatalogModal);
         getEl('geneticsTabBtn').addEventListener('click', () => handlers.switchToolsTab('genetics'));
-        getEl('geneticsTabBtn').addEventListener('click', () => handlers.switchToolsTab('genetics'));
         getEl('stockTabBtn').addEventListener('click', () => handlers.switchToolsTab('stock'));
         getEl('baulSemillasTabBtn').addEventListener('click', () => handlers.switchToolsTab('baulSemillas'));
+        getEl('curingJarsTabBtn').addEventListener('click', () => handlers.switchToolsTab('curingJars'));
         getEl('phenohuntTabBtn').addEventListener('click', () => handlers.switchToolsTab('phenohunt'));
         getEl('historialTabBtn').addEventListener('click', () => handlers.switchToolsTab('historial'));
         getEl('searchTools').addEventListener('input', handlers.handleToolsSearch);
@@ -1335,18 +1454,31 @@ handlePhenoCardUpdate: async (e) => {
     },
     switchToolsTab: (newTab) => {
         activeToolsTab = newTab;
-        ['genetics', 'stock', 'baulSemillas', 'phenohunt', 'historial'].forEach(tab => {
-            getEl(`${tab}Content`).classList.toggle('hidden', tab !== activeToolsTab);
-            getEl(`${tab}TabBtn`).classList.toggle('border-amber-400', tab === activeToolsTab);
-            getEl(`${tab}TabBtn`).classList.toggle('border-transparent', tab !== activeToolsTab);
+        ['genetics', 'stock', 'baulSemillas', 'curingJars', 'phenohunt', 'historial'].forEach(tab => {
+            const contentEl = getEl(`${tab}Content`);
+            const tabBtnEl = getEl(`${tab}TabBtn`);
+            if (contentEl) contentEl.classList.toggle('hidden', tab !== activeToolsTab);
+            if (tabBtnEl) {
+                tabBtnEl.classList.toggle('border-amber-400', tab === activeToolsTab);
+                tabBtnEl.classList.toggle('border-transparent', tab !== activeToolsTab);
+            }
         });
 
         const searchTools = getEl('searchTools');
         const viewMode = getEl('view-mode-toggle');
         const exportBtn = getEl('exportCsvBtn');
 
-        // Ocultar/mostrar elementos UI según la pestaña
-        if (newTab === 'historial') {
+        searchTools.classList.remove('hidden');
+        viewMode.classList.remove('hidden');
+        exportBtn.classList.remove('hidden');
+        
+        if (newTab === 'curingJars') {
+            searchTools.classList.add('hidden');
+            viewMode.classList.add('hidden');
+            exportBtn.classList.add('hidden');
+            const curingCiclos = currentCiclos.filter(c => c.estado === 'en_curado');
+            renderCuringJarsList(curingCiclos, handlers);
+        } else if (newTab === 'historial') {
             searchTools.placeholder = 'Buscar por genética, sala...';
             viewMode.classList.add('hidden');
             exportBtn.classList.add('hidden');
@@ -1356,25 +1488,14 @@ handlePhenoCardUpdate: async (e) => {
             viewMode.classList.add('hidden');
             exportBtn.classList.add('hidden');
             renderPhenohuntList(currentPhenohunts, handlers);
-        }
-        else {
+        } else {
             searchTools.placeholder = 'Buscar por nombre...';
-            viewMode.classList.remove('hidden'); // Siempre visible para las vistas de inventario
-            exportBtn.classList.remove('hidden'); // Siempre visible para las vistas de inventario
-            
-            // Renderizar la lista correspondiente
-            if (newTab === 'genetics') {
-                renderGeneticsList(currentGenetics, handlers);
-            } else if (newTab === 'stock') {
-                const stockItems = currentGenetics.filter(g => g.cloneStock > 0);
-                renderStockList(stockItems, handlers);
-            } else if (newTab === 'baulSemillas') {
-                const seedItems = currentGenetics.filter(g => g.seedStock > 0);
-                renderBaulSemillasList(seedItems, handlers);
-            }
+            if (newTab === 'genetics') renderGeneticsList(currentGenetics, handlers);
+            if (newTab === 'stock') renderStockList(currentGenetics.filter(g => g.cloneStock > 0), handlers);
+            if (newTab === 'baulSemillas') renderBaulSemillasList(currentGenetics.filter(g => g.seedStock > 0), handlers);
         }
-        // NOTA: La búsqueda para la nueva pestaña la implementaremos más adelante si es necesario.
-        handlers.handleToolsSearch({ target: { value: '' } }); // Resetear búsqueda al cambiar de tab
+        
+        handlers.handleToolsSearch({ target: { value: '' } });
     },
     handleToolsSearch: (e) => {
         const searchTerm = e.target.value.toLowerCase();
@@ -1672,59 +1793,84 @@ handlePhenoCardUpdate: async (e) => {
         uiOpenFinalizarCicloModal(ciclo, PREDEFINED_TAGS, MAX_CUSTOM_TAGS, currentGenetics);
     },
     handleFinalizarCicloFormSubmit: async (e) => {
-        e.preventDefault();
-        const form = e.target;
-        const cicloId = form.dataset.cicloId;
-        const cicloOriginal = (await getDoc(doc(db, `users/${userId}/ciclos`, cicloId))).data();
-        
-        const pesoSeco = parseFloat(getEl('peso-seco').value);
-        const etiquetasGlobales = Array.from(getEl('global-tags-container').querySelectorAll('.tag.active')).map(t => t.textContent);
-        const etiquetasCustom = Array.from(getEl('custom-tags-container').querySelectorAll('.tag')).map(t => t.textContent.replace(' ×', ''));
-        
-        const feedbackGeneticas = [];
-        document.querySelectorAll('.genetic-feedback-row').forEach(row => {
-            const id = row.dataset.id;
-            const name = row.dataset.name;
-            const decision = row.querySelector('input[name="decision-' + id + '"]:checked')?.value || 'ninguna';
-            const favorita = row.querySelector('.favorite-checkbox').checked;
-            feedbackGeneticas.push({ id, name, decision, favorita });
-        });
+    e.preventDefault();
+    const form = e.target;
+    const cicloId = form.dataset.cicloId;
+    const cicloOriginal = (await getDoc(doc(db, `users/${userId}/ciclos`, cicloId))).data();
+    
+    // La recolección de datos del formulario no cambia
+    const pesoSeco = parseFloat(getEl('peso-seco').value);
+    const etiquetasGlobales = Array.from(getEl('global-tags-container').querySelectorAll('.tag.active')).map(t => t.textContent);
+    const etiquetasCustom = Array.from(getEl('custom-tags-container').querySelectorAll('.tag')).map(t => t.textContent.replace(' ×', ''));
+    const feedbackGeneticas = [];
+    document.querySelectorAll('.genetic-feedback-row').forEach(row => {
+        const id = row.dataset.id;
+        const name = row.dataset.name;
+        const decision = row.querySelector('input[name="decision-' + id + '"]:checked')?.value || 'ninguna';
+        const favorita = row.querySelector('.favorite-checkbox').checked;
+        feedbackGeneticas.push({ id, name, decision, favorita });
+    });
 
-        const diasDeSecado = cicloOriginal.fechaInicioSecado ? calculateDaysBetween(cicloOriginal.fechaInicioSecado, new Date()) : 0;
-        const diasDeFlora = calculateDaysSince(cicloOriginal.floweringStartDate);
-
-        const cosechaData = {
-            estado: 'finalizado',
-            fechaFinalizacion: serverTimestamp(),
-            pesoSeco: isNaN(pesoSeco) ? 0 : pesoSeco,
-            diasDeFlora,
-            diasDeSecado,
-            etiquetasGlobales,
-            etiquetasCustom,
-            feedbackGeneticas
-        };
-
-        try {
-            const batch = writeBatch(db);
-            const cicloRef = doc(db, `users/${userId}/ciclos`, cicloId);
-            batch.update(cicloRef, cosechaData);
-            
-            for (const feedback of feedbackGeneticas) {
-                const geneticRef = doc(db, `users/${userId}/genetics`, feedback.id);
-                const originalGenetic = currentGenetics.find(g => g.id === feedback.id);
-                if (originalGenetic && originalGenetic.favorita !== feedback.favorita) {
-                    batch.update(geneticRef, { favorita: feedback.favorita });
-                }
+    // La consolidación de datos (snapshot) tampoco cambia
+    const snapshot_genetics = [];
+    if (cicloOriginal.genetics && cicloOriginal.genetics.length > 0) {
+        cicloOriginal.genetics.forEach(cicloGenetic => {
+            const fullGeneticData = currentGenetics.find(g => g.id === cicloGenetic.id);
+            if (fullGeneticData) {
+                snapshot_genetics.push({
+                    id: fullGeneticData.id,
+                    name: fullGeneticData.name,
+                    phenoName: cicloGenetic.name,
+                    bank: fullGeneticData.bank || null,
+                    parents: fullGeneticData.parents || null,
+                    owner: fullGeneticData.owner || null,
+                });
+            } else {
+                snapshot_genetics.push({ id: cicloGenetic.id, name: cicloGenetic.name, phenoName: cicloGenetic.name, bank: 'Dato no disponible', parents: null, owner: null });
             }
-            
-            await batch.commit();
-            showNotification('¡Cosecha guardada en el historial! Felicitaciones.');
-            getEl('finalizarCicloModal').style.display = 'none';
-        } catch(error) {
-            console.error("Error guardando la cosecha: ", error);
-            showNotification('Error al guardar la cosecha en el historial.', 'error');
+        });
+    }
+
+    const diasDeSecado = cicloOriginal.fechaInicioSecado ? calculateDaysBetween(cicloOriginal.fechaInicioSecado, new Date()) : 0;
+    const diasDeFlora = calculateDaysSince(cicloOriginal.floweringStartDate);
+
+    // --- ▼▼▼ AQUÍ ESTÁ EL CAMBIO PRINCIPAL ▼▼▼ ---
+    const cosechaData = {
+        estado: 'en_curado', // Cambiamos el estado
+        fechaInicioCurado: serverTimestamp(), // Añadimos la fecha de inicio de curado
+        pesoSeco: isNaN(pesoSeco) ? 0 : pesoSeco,
+        diasDeFlora,
+        diasDeSecado,
+        etiquetasGlobales,
+        etiquetasCustom,
+        feedbackGeneticas,
+        snapshot_genetics
+        // El campo 'fechaFinalizacion' ya no se establece aquí
+    };
+    // --- ▲▲▲ FIN DEL CAMBIO ▲▲▲ ---
+
+    try {
+        const batch = writeBatch(db);
+        const cicloRef = doc(db, `users/${userId}/ciclos`, cicloId);
+        batch.update(cicloRef, cosechaData);
+        
+        for (const feedback of feedbackGeneticas) {
+            const geneticRef = doc(db, `users/${userId}/genetics`, feedback.id);
+            const originalGenetic = currentGenetics.find(g => g.id === feedback.id);
+            if (originalGenetic && originalGenetic.favorita !== feedback.favorita) {
+                batch.update(geneticRef, { favorita: feedback.favorita });
+            }
         }
-    },
+        
+        await batch.commit();
+        // Actualizamos el mensaje para reflejar el nuevo estado
+        showNotification('¡Cosecha enfrascada! Ahora podés seguir su curado desde Herramientas.');
+        getEl('finalizarCicloModal').style.display = 'none';
+    } catch(error) {
+        console.error("Error guardando la cosecha para curado: ", error);
+        showNotification('Error al iniciar el proceso de curado.', 'error');
+    }
+},
     handleAddWeek: async (cicloId) => {
         try {
             const cicloRef = doc(db, `users/${userId}/ciclos`, cicloId);
@@ -1853,35 +1999,27 @@ handlePhenoCardUpdate: async (e) => {
     }
 };
 
-onAuthStateChanged(auth, async user => { // Convertimos la función en async
+onAuthStateChanged(auth, async user => {
     getEl('initial-loader').classList.add('hidden');
     if (user) {
         userId = user.uid;
-
-        // --- INICIO DEL BLOQUE DE MIGRACIÓN ---
-        // Mostramos el loader de nuevo mientras se ejecuta la posible migración
-        getEl('initial-loader').classList.remove('hidden'); 
-        
         await runDataMigration(user.uid);
         
-        // Ocultamos el loader una vez que la migración ha terminado
-        getEl('initial-loader').classList.add('hidden');
-        // --- FIN DEL BLOQUE DE MIGRACIÓN ---
-
-        handlers.hideAllViews();
-        const appView = getEl('app');
-        appView.classList.remove('hidden');
-        appView.classList.add('view-container');
-        getEl('welcomeUser').innerText = `Anota todo, no seas pancho.`;
-
-        // Ahora, cargamos los datos ya migrados/unificados
-        loadSalas();
-        loadCiclos();
-        loadGenetics(); // Este ahora contiene las semillas también
-        // loadSeeds(); // Esta función ya no es necesaria
+        // Carga inicial de todos los datos en memoria
+        loadGenetics();
         loadPhenohunts();
         loadHistorial();
-        initializeEventListeners(handlers);
+        loadCiclos(); // Cargamos ciclos
+        loadSalas();    // Y salas.
+
+        // Una vez que el usuario está logueado, mostramos el dashboard.
+        // NOTA: Para que los datos aparezcan, podríamos necesitar un pequeño delay o un sistema de promesas.
+        // Por ahora, lo llamamos directamente.
+        setTimeout(() => {
+            handlers.showDashboard();
+        }, 250); // Un pequeño delay para dar tiempo a que los datos iniciales carguen.
+
+        initializeEventListeners(handlers); // Inicializa listeners globales
         window.addEventListener('click', (e) => {
             if (!e.target.closest('.ciclo-item-container')) {
                 document.querySelectorAll('.ciclo-actions-menu').forEach(menu => {
@@ -1890,20 +2028,11 @@ onAuthStateChanged(auth, async user => { // Convertimos la función en async
             }
         });
 
-        getEl('searchSalas').addEventListener('input', e => {
-            const searchTerm = e.target.value.toLowerCase();
-            const filteredSalas = currentSalas.filter(sala => sala.name.toLowerCase().includes(searchTerm));
-            if (sortableSalas) sortableSalas.destroy();
-            renderSalasGrid(filteredSalas, currentCiclos, handlers);
-            initializeDragAndDrop();
-        });
-
     } else {
         userId = null;
         if (salasUnsubscribe) salasUnsubscribe();
         if (ciclosUnsubscribe) ciclosUnsubscribe();
         if (geneticsUnsubscribe) geneticsUnsubscribe();
-        if (seedsUnsubscribe) seedsUnsubscribe(); // Aún es bueno limpiarlo en logout
         if (phenohuntUnsubscribe) phenohuntUnsubscribe(); 
         if (historialUnsubscribe) historialUnsubscribe();
 

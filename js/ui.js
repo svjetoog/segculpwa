@@ -854,10 +854,14 @@ export function renderToolsView() {
                 <button id="stockTabBtn" class="py-4 px-1 border-b-2 font-medium text-lg text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:border-gray-400 dark:hover:border-gray-300 whitespace-nowrap btn-base">Stock Clones</button>
                 <button id="baulSemillasTabBtn" class="py-4 px-1 border-b-2 font-medium text-lg text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:border-gray-400 dark:hover:border-gray-300 whitespace-nowrap btn-base">Baúl de Semillas</button>
                 <button id="phenohuntTabBtn" class="py-4 px-1 border-b-2 font-medium text-lg text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:border-gray-400 dark:hover:border-gray-300 whitespace-nowrap btn-base">Phenohunting</button>
+                <button id="curingJarsTabBtn" class="py-4 px-1 border-b-2 font-medium text-lg text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:border-gray-400 dark:hover:border-gray-300 whitespace-nowrap btn-base">Frascos en Curado</button>
                 <button id="historialTabBtn" class="py-4 px-1 border-b-2 font-medium text-lg text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:border-gray-400 dark:hover:border-gray-300 whitespace-nowrap btn-base">Historial</button>
             </nav>
         </div>
-        
+        <div id="curingJarsContent" class="hidden">
+            <div id="curingJarsList" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"></div>
+        </div>
+
         <div class="flex flex-col sm:flex-row items-center justify-between my-4 gap-4">
             <input type="search" id="searchTools" placeholder="Buscar..." class="w-full sm:w-auto sm:max-w-xs p-2 rounded-md focus:ring-amber-500 focus:border-amber-500">
             <div class="flex items-center gap-2">
@@ -2108,4 +2112,150 @@ export function renderWizardCicloRow(ciclo = {}, allSalas = []) {
         <button type="button" class="col-span-2 md:col-span-1 btn-danger btn-base flex items-center justify-center rounded-md" onclick="this.parentElement.remove()">×</button>
     `;
     container.appendChild(row);
+}
+export function renderDashboard(stats, recentActivity, curingJars) {
+    const appContainer = getEl('app');
+    if (!appContainer) return;
+
+    appContainer.innerHTML = ''; // Limpiamos la vista anterior
+
+    // --- INICIO DE FUNCIONES AUXILIARES DENTRO DE RENDER ---
+    const getTimeElapsed = (startDate) => {
+        if (!startDate) return 'Fecha inválida';
+        const start = startDate.toDate();
+        const now = new Date();
+        const diffTime = Math.abs(now - start);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        if (diffDays <= 1) return '1 día';
+        if (diffDays < 30) return `${diffDays} días`;
+        if (diffDays < 365) return `${Math.floor(diffDays / 30)} mes(es)`;
+        return `${Math.floor(diffDays / 365)} año(s)`;
+    };
+
+    const getCuringStageOpacities = (startDate) => {
+        if (!startDate) return { initial: 'opacity-40', optimal: 'opacity-40', extended: 'opacity-40' };
+        const start = startDate.toDate();
+        const now = new Date();
+        const diffTime = Math.abs(now - start);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        if (diffDays <= 21) { // Hasta 3 semanas
+            return { initial: 'opacity-100', optimal: 'opacity-40', extended: 'opacity-40' };
+        } else if (diffDays <= 60) { // De 3 semanas a 2 meses
+            return { initial: 'opacity-40', optimal: 'opacity-100', extended: 'opacity-40' };
+        } else { // Más de 2 meses
+            return { initial: 'opacity-40', optimal: 'opacity-40', extended: 'opacity-100' };
+        }
+    };
+
+    const curingJarsHTML = curingJars.length > 0
+        ? curingJars.map(jar => {
+            const opacities = getCuringStageOpacities(jar.fechaInicioCurado);
+            const geneticsNames = jar.snapshot_genetics.map(g => g.phenoName || g.name).join(', ');
+            return `
+            <div>
+                <div class="flex justify-between items-center text-sm mb-2">
+                    <span class="font-semibold truncate" title="${geneticsNames}">${jar.name}</span>
+                    <span class="font-mono font-semibold text-amber-400">${getTimeElapsed(jar.fechaInicioCurado)}</span>
+                </div>
+                <div class="flex w-full h-2 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700">
+                    <div class="cure-bar-segment w-1/3 bg-amber-400 ${opacities.initial}" title="Etapa Inicial (< 3 sem)"></div>
+                    <div class="cure-bar-segment w-1/3 bg-emerald-400 ${opacities.optimal}" title="Etapa Óptima (3 sem - 2 meses)"></div>
+                    <div class="cure-bar-segment w-1/3 bg-violet-400 ${opacities.extended}" title="Etapa Extendida (> 2 meses)"></div>
+                </div>
+            </div>
+            `;
+        }).join('')
+        : `<p class="text-center text-sm text-gray-400 dark:text-gray-500 py-4">No hay frascos en curado.</p>`;
+    // --- FIN DE FUNCIONES AUXILIARES ---
+
+    const dashboardHTML = `
+        <div class="max-w-7xl mx-auto">
+            {...} // Mantenemos todo el HTML del header sin cambios
+            
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                {...} // Mantenemos el Widget "Mi Cultivo" sin cambios
+
+                <div class="widget p-6">
+                    <h2 class="text-xl font-bold text-amber-400 mb-4">Mis Frascos en Curado</h2>
+                    <div class="space-y-5">
+                        ${curingJarsHTML}
+                    </div>
+                    ${curingJars.length > 0 ? `<a href="#" id="navigateToCuringJars" class="block text-center text-amber-400 text-sm font-semibold pt-4 hover:underline">Ver todos...</a>` : ''}
+                </div>
+
+                {...} // Mantenemos el Widget "Comunidad" con su mensaje de "Próximamente"
+            </div>
+        </div>
+    `;
+    
+    appContainer.innerHTML = dashboardHTML;
+
+    // Listener para el nuevo enlace "Ver todos..."
+    const navigateToCuringJars = getEl('navigateToCuringJars');
+    if (navigateToCuringJars) {
+        navigateToCuringJars.addEventListener('click', (e) => {
+            e.preventDefault();
+            // Lógica para navegar a la herramienta y abrir la pestaña correcta
+            handlers.showToolsView();
+            setTimeout(() => handlers.switchToolsTab('curingJars'), 50);
+        });
+    }
+}
+export function renderCuringJarsList(curingCiclos, handlers) {
+    const listContainer = getEl('curingJarsList');
+    if (!listContainer) return;
+
+    listContainer.innerHTML = '';
+
+    if (curingCiclos.length === 0) {
+        listContainer.innerHTML = `<p class="text-center text-gray-500 dark:text-gray-400 col-span-full">No tenés ninguna cosecha en proceso de curado.</p>`;
+        return;
+    }
+
+    const getTimeElapsed = (startDate) => {
+        if (!startDate) return 'Fecha inválida';
+        const start = startDate.toDate();
+        const now = new Date();
+        const diffTime = Math.abs(now - start);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        if (diffDays <= 1) return '1 día';
+        if (diffDays < 7) return `${diffDays} días`;
+        if (diffDays < 30) return `${Math.floor(diffDays / 7)} semana(s)`;
+        return `${Math.floor(diffDays / 30)} mes(es)`;
+    };
+
+    curingCiclos.forEach(ciclo => {
+        const card = document.createElement('div');
+        card.className = 'card p-4 flex flex-col justify-between';
+        const geneticsNames = ciclo.snapshot_genetics.map(g => g.phenoName || g.name).join(', ');
+
+        card.innerHTML = `
+            <div>
+                <h3 class="font-bold text-lg text-amber-400">${ciclo.name}</h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400 truncate" title="${geneticsNames}">${geneticsNames}</p>
+                <div class="flex justify-between items-baseline mt-3 font-mono">
+                    <span class="text-2xl font-bold text-gray-700 dark:text-gray-200">${ciclo.pesoSeco || 0}g</span>
+                    <span class="text-sm text-amber-400">en curado hace ${getTimeElapsed(ciclo.fechaInicioCurado)}</span>
+                </div>
+            </div>
+            <div class="mt-4">
+                {/* ▼▼▼ TEXTO DEL BOTÓN ACTUALIZADO ▼▼▼ */}
+                <button data-id="${ciclo.id}" class="btn-primary btn-base w-full font-semibold py-2 px-3 rounded-lg text-sm finish-curing-btn">
+                    Dar por Finalizado
+                </button>
+            </div>
+        `;
+        listContainer.appendChild(card);
+    });
+
+    listContainer.querySelectorAll('.finish-curing-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const cicloId = e.currentTarget.dataset.id;
+            const cicloName = curingCiclos.find(c => c.id === cicloId)?.name;
+            handlers.handleFinishCuring(cicloId, cicloName);
+        });
+    });
 }

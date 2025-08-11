@@ -1,7 +1,7 @@
 // js/onboarding.js
 
 /**
- * Configura e inicializa el tour principal de bienvenida para nuevos usuarios.
+ * Configura e inicializa el tour principal de bienvenida para el nuevo dashboard.
  */
 export function startMainTour() {
     if (localStorage.getItem('onboarding_main_complete')) {
@@ -31,56 +31,39 @@ export function startMainTour() {
     });
 
     tour.addStep({
-        id: 'step-1-welcome',
-        title: '¡Hola! Bienvenido a SegCul',
-        text: 'Vamos a dar un recorrido rápido para mostrarte las funciones clave y que puedas empezar a usar la app.',
+        id: 'dash-step-1-welcome',
+        title: '¡Hola! Bienvenido a tu Panel',
+        text: 'Este es tu nuevo centro de control. Aquí tendrás un resumen visual del estado de todo tu cultivo de un solo vistazo.',
         attachTo: { element: '#app header h1', on: 'bottom' },
         buttons: [{ action() { return this.next(); }, text: 'Comenzar' }],
     });
 
     tour.addStep({
-        id: 'step-2-menu',
-        title: 'Menú de Acciones',
-        text: 'Este es el menú principal. Usalo para desplegar las acciones más importantes, como añadir salas, ciclos o acceder a las herramientas.',
-        attachTo: { element: '#menuBtn', on: 'bottom' },
-        beforeShowPromise: function() {
-            return new Promise(function(resolve) {
-                document.getElementById('dropdownMenu').classList.add('hidden');
-                resolve();
-            });
-        },
+        id: 'dash-step-2-widget',
+        title: 'Tu Cultivo en Números',
+        text: 'Este widget te muestra las estadísticas clave, como ciclos activos y stock, además de la actividad más reciente que hayas registrado.',
+        attachTo: { element: '.widget:first-of-type', on: 'bottom' },
     });
     
     tour.addStep({
-        id: 'step-3-setup-wizard',
-        title: 'La Forma Rápida de Empezar',
-        text: 'Para empezar, te recomendamos usar esta opción. La <strong>Configuración Rápida</strong> es la forma más directa de cargar todas tus salas y ciclos actuales de una sola vez.',
-        attachTo: { element: '#menuSetupWizard', on: 'bottom' },
-        beforeShowPromise: function() {
-            return new Promise(function(resolve) {
-                document.getElementById('dropdownMenu').classList.remove('hidden');
-                resolve();
-            });
-        },
-    });
-
-    tour.addStep({
-        id: 'step-4-end',
-        title: '¡Excelente! Todo Listo',
-        text: 'Con esto ya tenés lo necesario para comenzar. Más adelante, explorá las <strong>Herramientas</strong> para gestionar tu inventario de genéticas. ¡Muchos éxitos en tu cultivo!',
-        attachTo: { element: '#menuTools', on: 'bottom' },
+        id: 'dash-step-3-action',
+        title: 'Tu Primer Paso: Cargar Datos',
+        text: 'Ahora que ya conocés el panel, el siguiente paso es cargar tu cultivo. Para eso, abrí el <strong>menú</strong> y seleccioná <strong>"Configuración Rápida"</strong>.',
+        attachTo: { element: '#menuBtn', on: 'bottom' },
         buttons: [
             { action() { return this.back(); }, classes: 'shepherd-button-secondary', text: 'Atrás' },
-            { action() { return this.complete(); }, text: 'Finalizar Tour' },
+            { 
+              action() {
+                document.getElementById('menuBtn').click(); // Abre el menú para el usuario
+                this.complete();
+              }, 
+              text: '¡Entendido!' 
+            },
         ],
     });
 
     const markTourAsComplete = () => {
         localStorage.setItem('onboarding_main_complete', 'true');
-        const dropdown = document.getElementById('dropdownMenu');
-        if (dropdown) {
-            dropdown.classList.add('hidden');
-        }
     };
     tour.on('complete', markTourAsComplete);
     tour.on('cancel', markTourAsComplete);
@@ -153,13 +136,11 @@ export function startToolsTour() {
         title: 'Organizá por Arrastre',
         text: 'Un dato útil: en las vistas de inventario, podés <strong>arrastrar y soltar</strong> las tarjetas o elementos de la lista para ordenarlos según tu criterio. El orden se guarda solo.',
         attachTo: { element: '#geneticsList', on: 'top' },
-        // Se ajustan los botones para que este sea el último paso.
         buttons: [
             { action() { return this.back(); }, classes: 'shepherd-button-secondary', text: 'Atrás' },
             { action() { return this.complete(); }, text: '¡Entendido!' },
         ],
     });
-
 
     const markTourAsComplete = () => {
         localStorage.setItem('onboarding_tools_complete', 'true');
