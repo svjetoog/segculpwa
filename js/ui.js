@@ -139,35 +139,6 @@ export function initializeDashboardStatsCarousel(statsData) {
         setInterval(updateStats, 5000);
     }
 }
-export function initializeDashboardStatsCarousel(statsData) {
-    const statsContainer = getEl('stats-carousel');
-    if (statsContainer && statsData && statsData.length > 0) {
-        let currentStatIndex = 0;
-        const createStatCardHTML = (stat) => `
-            <div class="stat-card flex items-center p-3 bg-gray-100 dark:bg-gray-800/50 rounded-lg" style="opacity: 0; transition: opacity 0.5s ease-in-out;">
-                <div class="p-2 bg-${stat.color}-500/20 rounded-md">
-                    ${stat.icon}
-                </div>
-                <div class="ml-4">
-                    <p class="text-sm text-gray-500 dark:text-gray-400">${stat.label}</p>
-                    <p class="text-2xl font-bold font-mono text-gray-800 dark:text-gray-100">${stat.value}</p>
-                </div>
-            </div>`;
-
-        const updateStats = () => {
-            const safeStats = statsData.length > 1 ? statsData : [statsData[0], statsData[0]];
-            const stat1 = safeStats[currentStatIndex % safeStats.length];
-            const stat2 = safeStats[(currentStatIndex + 1) % safeStats.length];
-            statsContainer.innerHTML = createStatCardHTML(stat1) + createStatCardHTML(stat2);
-            setTimeout(() => {
-                statsContainer.querySelectorAll('.stat-card').forEach(card => card.style.opacity = '1');
-            }, 100);
-            currentStatIndex = (currentStatIndex + 2) % safeStats.length;
-        };
-        updateStats();
-        setInterval(updateStats, 5000);
-    }
-}
 function createTooltipIcon(title) {
     return `
         <span class="tooltip-trigger inline-flex items-center justify-center" data-tippy-content="${title}">
