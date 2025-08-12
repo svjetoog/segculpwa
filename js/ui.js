@@ -1102,7 +1102,6 @@ export function renderSalasGrid(salas, ciclos, handlers) {
     salas.forEach(sala => {
         const ciclosInSala = ciclos.filter(c => c.salaId === sala.id);
         const activeCiclos = ciclosInSala.filter(c => c.estado !== 'finalizado');
-        // Usamos la clase .card que ya existe en tu app
         const salaCard = document.createElement('div');
         salaCard.className = 'card rounded-xl p-5 flex flex-col justify-between aspect-square relative';
         salaCard.dataset.salaId = sala.id;
@@ -1119,7 +1118,6 @@ export function renderSalasGrid(salas, ciclos, handlers) {
                 cicloLink.className = 'ciclo-item-link';
                 cicloLink.onclick = () => handlers.showCicloDetails(ciclo);
 
-                // ESTA ES LA LÓGICA DE ESTILOS QUE QUERÍAS CONSERVAR
                 let phaseClass = 'finalizado';
                 if (ciclo.estado === 'en_secado') {
                     phaseClass = 'secado';
@@ -1145,9 +1143,18 @@ export function renderSalasGrid(salas, ciclos, handlers) {
                 const actionsMenu = document.createElement('div');
                 actionsMenu.className = 'ciclo-actions-menu hidden';
                 actionsMenu.innerHTML = `
-                    <a data-action="edit-ciclo"><svg class="w-4 h-4" ...></svg>Editar</a>
-                    <a data-action="move-ciclo"><svg class="w-4 h-4" ...></svg>Mover</a>
-                    <a data-action="delete-ciclo" class="text-red-500 dark:text-red-400"><svg class="w-4 h-4" ...></svg>Eliminar</a>
+                    <a data-action="edit-ciclo">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" /></svg>
+                        Editar
+                    </a>
+                    <a data-action="move-ciclo">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path d="M7.5 21 3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" /></svg>
+                        Mover
+                    </a>
+                    <a data-action="delete-ciclo" class="text-red-500 dark:text-red-400">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.134-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.067-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>
+                        Eliminar
+                    </a>
                 `;
                 
                 actionsButton.onclick = (e) => handlers.handleToggleCicloMenu(e, actionsMenu);
@@ -1176,8 +1183,12 @@ export function renderSalasGrid(salas, ciclos, handlers) {
                 <div class="flex-grow relative overflow-y-auto"></div>
             </div>
             <div class="flex justify-end gap-2 mt-4 flex-wrap">
-                <button data-action="edit-sala" class="btn-secondary btn-base p-2 rounded-lg" title="Editar Sala"><svg class="w-5 h-5" ...></svg></button>
-                <button data-action="delete-sala" class="btn-danger btn-base p-2 rounded-lg" title="Eliminar Sala"><svg class="w-5 h-5" ...></svg></button>
+                <button data-action="edit-sala" class="btn-secondary btn-base p-2 rounded-lg" title="Editar Sala">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg>
+                </button>
+                <button data-action="delete-sala" class="btn-danger btn-base p-2 rounded-lg" title="Eliminar Sala">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.134-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.067-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>
+                </button>
             </div>
         `;
         salaCard.querySelector('.flex-grow.relative').appendChild(ciclosPreviewContainer);
@@ -2114,7 +2125,7 @@ export function renderDashboard(stats, recentActivity, curingJars, handlers) {
      <div class="max-w-7xl mx-auto">
         <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8">
             <div>
-                <h1 class="text-3xl font-bold text-amber-400 font-mono tracking-wider">Dashboard</h1>
+                <h1 class="text-3xl font-bold text-amber-400 font-mono tracking-wider">Panel Principal</h1>
                 <p id="welcomeUser" class="text-gray-500 dark:text-gray-400 mt-1"></p>
             </div>
             <div class="relative mt-4 sm:mt-0 self-end sm:self-auto flex items-center gap-3">
@@ -2133,39 +2144,34 @@ export function renderDashboard(stats, recentActivity, curingJars, handlers) {
         </header>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div class="lg:col-span-2 space-y-6">
-                <div class="card p-6">
-                    <h2 class="text-xl font-bold text-amber-400 mb-4">Estadísticas Generales</h2>
-                    <div id="stats-carousel" class="grid grid-cols-1 sm:grid-cols-2 gap-6 h-24">
-                        </div>
-                </div>
-                <div class="card p-6">
-                     <div class="flex justify-between items-center mb-4">
-                         <h2 class="text-xl font-bold text-amber-400">Mis Salas</h2>
-                         <a href="#" id="navigateToSalas" class="text-amber-400 text-sm font-semibold hover:underline">Ver todas →</a>
-                    </div>
-                    <div id="salasGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                         <p class="text-center text-sm text-gray-400 dark:text-gray-500 col-span-full">Cargando salas...</p>
-                    </div>
-                </div>
-            </div>
-
+            
             <div class="lg:col-span-1 space-y-6">
                 <div class="card p-6">
-                    <h2 class="text-xl font-bold text-amber-400 mb-3">Actividad Reciente</h2>
+                    <h2 class="text-xl font-bold text-amber-400 mb-1">Mi Cultivo</h2>
+                    <a href="#" id="navigateToSalas" class="text-sm text-amber-400 hover:underline mb-4 block">Ver todas las salas →</a>
+                    <div id="stats-carousel" class="space-y-4 mb-6">
+                        </div>
+                    <h3 class="font-semibold text-gray-800 dark:text-gray-200 mb-3 border-t border-gray-200 dark:border-gray-700 pt-4">Actividad Reciente</h3>
                     <ul class="space-y-4">${recentActivityHTML}</ul>
                 </div>
+
                 <div class="card p-6">
                     <h2 class="text-xl font-bold text-amber-400 mb-4">Mis Frascos en Curado</h2>
                     <div class="space-y-5">${curingJarsHTML}</div>
                     ${curingJars.length > 0 ? `<a href="#" id="navigateToCuringJars" class="block text-center text-amber-400 text-sm font-semibold pt-2 hover:underline">Ver todos...</a>` : ''}
                 </div>
             </div>
+
+            <div class="card p-6 lg:col-span-2">
+                <h2 class="text-xl font-bold text-amber-400 mb-4">Comunidad</h2>
+                <div class="h-full flex items-center justify-center text-center text-gray-500 dark:text-gray-400">
+                    <p><strong>Próximamente:</strong> Un espacio para compartir tus cosechas y aprender de otros cultivadores.</p>
+                </div>
+            </div>
         </div>
     </div>`;
     
     appContainer.innerHTML = dashboardHTML;
-    renderSalasGrid(handlers.getAllSalas(), [], handlers);
 }
 export function renderCuringJarsList(curingCiclos, handlers) {
     const listContainer = getEl('curingJarsList');
@@ -2241,11 +2247,13 @@ export function initializeDashboardEventListeners(statsData) {
     if (statsContainer && statsData && statsData.length > 0) {
         let currentStatIndex = 0;
         const createStatCardHTML = (stat) => `
-            <div class="stat-card flex items-start gap-4" style="opacity: 0;">
-                <div class="p-3 rounded-lg bg-${stat.color}-500/20">${stat.icon}</div>
-                <div>
+            <div class="stat-card flex items-center p-3 bg-gray-100 dark:bg-gray-800/50 rounded-lg" style="opacity: 0;">
+                <div class="p-2 bg-${stat.color}-500/20 rounded-md">
+                    ${stat.icon}
+                </div>
+                <div class="ml-4">
                     <p class="text-sm text-gray-500 dark:text-gray-400">${stat.label}</p>
-                    <p class="text-2xl font-bold text-gray-800 dark:text-gray-100">${stat.value}</p>
+                    <p class="text-2xl font-bold font-mono text-gray-800 dark:text-gray-100">${stat.value}</p>
                 </div>
             </div>`;
 
