@@ -13,16 +13,16 @@ const prodConfig = {
 };
 
 const stagingConfig = {
-  apiKey: "AIzaSy...xxxxxxxxxxxxxxxxxxx",
-  authDomain: "tu-proyecto-staging.firebaseapp.com",
-  projectId: "tu-proyecto-staging",
-  storageBucket: "tu-proyecto-staging.appspot.com",
-  messagingSenderId: "1234567890",
-  appId: "1:1234567890:web:xxxxxxxxxxxxxxxx"
+  apiKey: "AIzaSyAquLEDmvg9Gv6xvQZIFdX9ZS3m7lbUovw",
+  authDomain: "segcul-staging.firebaseapp.com",
+  projectId: "segcul-staging",
+  storageBucket: "segcul-staging.firebasestorage.app",
+  messagingSenderId: "894814637048",
+  appId: "1:894814637048:web:f56ce0ecbb7055e0c0a40d"
 };
 
 // --- LÓGICA DE SELECCIÓN DE AMBIENTE ---
-const isProduction = window.location.hostname === 'segcul.web.app';
+const isProduction = window.location.hostname === 'segcul.netlify.app';
 const firebaseConfig = isProduction ? prodConfig : stagingConfig;
 
 // Si estás probando localmente, siempre usará STAGING.
