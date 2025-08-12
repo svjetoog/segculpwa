@@ -1629,6 +1629,7 @@ export function initializeEventListeners(handlers) {
     menuAddSalaLink.addEventListener('click', (e) => { e.preventDefault(); handlers.openSalaModal(); getEl('dropdownMenu').classList.add('hidden'); });
     
     getEl('menuAddCiclo').addEventListener('click', (e) => { e.preventDefault(); handlers.openCicloModal(null, null, null, handlers); getEl('dropdownMenu').classList.add('hidden'); });
+    getEl('menuCurado').addEventListener('click', (e) => { e.preventDefault(); handlers.handleOpenCuradoModal(); getEl('dropdownMenu').classList.add('hidden'); });
     getEl('menuSetupWizard').addEventListener('click', (e) => { e.preventDefault(); handlers.openSetupWizard(); getEl('dropdownMenu').classList.add('hidden'); });
     getEl('menuTools').addEventListener('click', (e) => { e.preventDefault(); handlers.showToolsView(); getEl('dropdownMenu').classList.add('hidden'); });
     getEl('menuSettings').addEventListener('click', (e) => { e.preventDefault(); handlers.showSettingsView(); getEl('dropdownMenu').classList.add('hidden'); });
@@ -2108,4 +2109,74 @@ export function renderWizardCicloRow(ciclo = {}, allSalas = []) {
         <button type="button" class="col-span-2 md:col-span-1 btn-danger btn-base flex items-center justify-center rounded-md" onclick="this.parentElement.remove()">×</button>
     `;
     container.appendChild(row);
+}
+export function openCuradoModal(frascos, handlers) {
+    const modal = getEl('curadoModal');
+
+    // Función interna para obtener el estadio y color del curado
+    const getCuradoStage = (days) => {
+        if (days <= 14) {
+            return { text: 'Curado Inicial', colorClass: 'bg-sky-500' };
+        } else if (days <= 42) {
+            return { text: 'Curado Óptimo', colorClass: 'bg-amber-500' };
+        } else {
+            return { text: 'Curado Extendido', colorClass: 'bg-purple-600' };
+        }
+    };
+
+    let frascosHTML = '';
+    if (frascos.length > 0) {
+        frascosHTML = frascos
+            .sort((a, b) => b.fechaEnfrascado.toDate() - a.fechaEnfrascado.toDate()) // Ordena por más reciente primero
+            .map(frasco => {
+                const diasCurado = handlers.calculateDaysBetween(frasco.fechaEnfrascado.toDate(), new Date());
+                const stage = getCuradoStage(diasCurado);
+                return `
+                    <div class="card p-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+                        <div>
+                            <h4 class="font-bold text-lg text-amber-400">${frasco.nombreCosecha}</h4>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">Genética: ${frasco.geneticaPrincipal}</p>
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <div class="text-center">
+                                <div class="text-3xl font-mono">${diasCurado}</div>
+                                <div class="text-xs text-gray-500 dark:text-gray-400">días</div>
+                            </div>
+                            <span class="text-xs font-semibold px-2 py-1 rounded-full text-white ${stage.colorClass}">${stage.text}</span>
+                        </div>
+                        <button data-frasco-id="${frasco.id}" class="btn-danger btn-base py-2 px-3 rounded-lg w-full sm:w-auto eliminar-frasco-btn">
+                            Stock Terminado
+                        </button>
+                    </div>
+                `;
+            }).join('');
+    } else {
+        frascosHTML = `<p class="text-center text-gray-500 dark:text-gray-400 py-8">No tienes frascos en curado. ¡Finaliza una cosecha para empezar!</p>`;
+    }
+
+    const modalContent = `
+        <div class="w-11/12 md:w-full max-w-2xl p-6 rounded-lg shadow-lg max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-amber-400">Frascos en Curado</h2>
+                <button id="closeCuradoModal" class="btn-secondary btn-base p-2 rounded-full">&times;</button>
+            </div>
+            <div class="flex-grow overflow-y-auto pr-2 space-y-4">
+                ${frascosHTML}
+            </div>
+        </div>
+    `;
+
+    modal.innerHTML = modalContent;
+    modal.style.display = 'flex';
+
+    // Añadir listeners después de que el HTML está en el DOM
+    setTimeout(() => {
+        getEl('closeCuradoModal').addEventListener('click', () => modal.style.display = 'none');
+        document.querySelectorAll('.eliminar-frasco-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const frascoId = e.currentTarget.dataset.frascoId;
+                handlers.handleEliminarFrasco(frascoId);
+            });
+        });
+    }, 0);
 }

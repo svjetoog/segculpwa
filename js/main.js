@@ -31,8 +31,8 @@ import { startMainTour, startToolsTour } from './onboarding.js';
 
 // --- STATE MANAGEMENT ---
 let userId = null;
-let salasUnsubscribe = null, ciclosUnsubscribe = null, logsUnsubscribe = null, geneticsUnsubscribe = null, seedsUnsubscribe = null, historialUnsubscribe = null, phenohuntUnsubscribe = null;
-let currentSalas = [], currentCiclos = [], currentGenetics = [], currentSeeds = [], currentHistorial = [], currentPhenohunts = [];
+let salasUnsubscribe = null, ciclosUnsubscribe = null, logsUnsubscribe = null, geneticsUnsubscribe = null, seedsUnsubscribe = null, historialUnsubscribe = null, phenohuntUnsubscribe = null, frascosUnsubscribe = null;
+let currentSalas = [], currentCiclos = [], currentGenetics = [], currentSeeds = [], currentHistorial = [], currentPhenohunts = [], currentFrascos = [];
 let currentSalaId = null, currentSalaName = null;
 let confirmCallback = null;
 let activeToolsTab = 'genetics';
@@ -318,7 +318,16 @@ function loadCiclos() {
         }
     });
 }
-
+function loadFrascos() {
+    if (!userId) return;
+    const q = query(collection(db, `users/${userId}/frascos`));
+    if (frascosUnsubscribe) frascosUnsubscribe();
+    frascosUnsubscribe = onSnapshot(q, (snapshot) => {
+        currentFrascos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    }, error => {
+        console.error("Error loading frascos:", error);
+    });
+}
 function loadGenetics() {
     if (!userId) return;
     const q = query(collection(db, `users/${userId}/genetics`));
@@ -468,6 +477,26 @@ async function runDataMigration(userId) {
 }
 
 const handlers = {
+    handleOpenCuradoModal: () => {
+        // Llama a la función de UI que creamos en el paso anterior
+        uiOpenCuradoModal(currentFrascos, handlers);
+    },
+    
+    handleEliminarFrasco: (frascoId) => {
+        handlers.showConfirmationModal('¿Seguro que quieres eliminar este frasco? Esta acción indica que el stock se ha terminado.', async () => {
+            try {
+                await deleteDoc(doc(db, `users/${userId}/frascos`, frascoId));
+                showNotification('Frasco eliminado del inventario.');
+                // El modal se actualizará solo la próxima vez que se abra, o puedes cerrarlo aquí si prefieres.
+                getEl('curadoModal').style.display = 'none';
+            } catch (error) {
+                console.error("Error eliminando frasco:", error);
+                showNotification('Error al eliminar el frasco.', 'error');
+            }
+        });
+    },
+
+    calculateDaysBetween,
     signOut: () => signOut(auth),
     handleLogin: (email, password) => {
         signInWithEmailAndPassword(auth, email, password)
@@ -1675,8 +1704,13 @@ handlePhenoCardUpdate: async (e) => {
         e.preventDefault();
         const form = e.target;
         const cicloId = form.dataset.cicloId;
-        const cicloOriginal = (await getDoc(doc(db, `users/${userId}/ciclos`, cicloId))).data();
-        
+        const cicloOriginal = currentCiclos.find(c => c.id === cicloId);
+        if (!cicloOriginal) {
+            showNotification('No se encontró el ciclo original.', 'error');
+            return;
+        }
+
+        // 1. Recolectar datos del formulario
         const pesoSeco = parseFloat(getEl('peso-seco').value);
         const etiquetasGlobales = Array.from(getEl('global-tags-container').querySelectorAll('.tag.active')).map(t => t.textContent);
         const etiquetasCustom = Array.from(getEl('custom-tags-container').querySelectorAll('.tag')).map(t => t.textContent.replace(' ×', ''));
@@ -1690,12 +1724,15 @@ handlePhenoCardUpdate: async (e) => {
             feedbackGeneticas.push({ id, name, decision, favorita });
         });
 
-        const diasDeSecado = cicloOriginal.fechaInicioSecado ? calculateDaysBetween(cicloOriginal.fechaInicioSecado, new Date()) : 0;
+        // 2. Preparar los datos para las dos operaciones
+        const fechaFinal = new Date();
+        const diasDeSecado = cicloOriginal.fechaInicioSecado ? calculateDaysBetween(cicloOriginal.fechaInicioSecado.toDate(), fechaFinal) : 0;
         const diasDeFlora = calculateDaysSince(cicloOriginal.floweringStartDate);
 
+        // Datos para actualizar el CICLO y mandarlo al HISTORIAL
         const cosechaData = {
             estado: 'finalizado',
-            fechaFinalizacion: serverTimestamp(),
+            fechaFinalizacion: fechaFinal,
             pesoSeco: isNaN(pesoSeco) ? 0 : pesoSeco,
             diasDeFlora,
             diasDeSecado,
@@ -1703,12 +1740,30 @@ handlePhenoCardUpdate: async (e) => {
             etiquetasCustom,
             feedbackGeneticas
         };
+        
+        // Datos para crear el nuevo FRASCO en el inventario de CURADO
+        const geneticaPrincipal = cicloOriginal.genetics && cicloOriginal.genetics.length > 0 ? cicloOriginal.genetics[0].name : 'Varias';
+        const frascoData = {
+            nombreCosecha: cicloOriginal.name,
+            geneticaPrincipal: geneticaPrincipal,
+            fechaEnfrascado: fechaFinal,
+            cicloId: cicloId,
+            userId: userId
+        };
 
         try {
+            // 3. Ejecutar todo en un batch atómico
             const batch = writeBatch(db);
+
+            // Operación 1: Actualizar el ciclo a 'finalizado'
             const cicloRef = doc(db, `users/${userId}/ciclos`, cicloId);
             batch.update(cicloRef, cosechaData);
             
+            // Operación 2: Crear el nuevo frasco
+            const newFrascoRef = doc(collection(db, `users/${userId}/frascos`));
+            batch.set(newFrascoRef, frascoData);
+
+            // Operación 3 (opcional): Actualizar genéticas favoritas
             for (const feedback of feedbackGeneticas) {
                 const geneticRef = doc(db, `users/${userId}/genetics`, feedback.id);
                 const originalGenetic = currentGenetics.find(g => g.id === feedback.id);
@@ -1718,11 +1773,12 @@ handlePhenoCardUpdate: async (e) => {
             }
             
             await batch.commit();
-            showNotification('¡Cosecha guardada en el historial! Felicitaciones.');
+            showNotification('¡Cosecha guardada en el historial y frasco añadido al inventario!');
             getEl('finalizarCicloModal').style.display = 'none';
+
         } catch(error) {
-            console.error("Error guardando la cosecha: ", error);
-            showNotification('Error al guardar la cosecha en el historial.', 'error');
+            console.error("Error guardando la cosecha y creando el frasco: ", error);
+            showNotification('Error al finalizar la cosecha.', 'error');
         }
     },
     handleAddWeek: async (cicloId) => {
@@ -1878,6 +1934,7 @@ onAuthStateChanged(auth, async user => { // Convertimos la función en async
         loadSalas();
         loadCiclos();
         loadGenetics(); // Este ahora contiene las semillas también
+        loadFrascos();
         // loadSeeds(); // Esta función ya no es necesaria
         loadPhenohunts();
         loadHistorial();
@@ -1904,7 +1961,8 @@ onAuthStateChanged(auth, async user => { // Convertimos la función en async
         if (ciclosUnsubscribe) ciclosUnsubscribe();
         if (geneticsUnsubscribe) geneticsUnsubscribe();
         if (seedsUnsubscribe) seedsUnsubscribe(); // Aún es bueno limpiarlo en logout
-        if (phenohuntUnsubscribe) phenohuntUnsubscribe(); 
+        if (phenohuntUnsubscribe) phenohuntUnsubscribe();
+        if (frascosUnsubscribe) frascosUnsubscribe(); 
         if (historialUnsubscribe) historialUnsubscribe();
 
         handlers.hideAllViews();
