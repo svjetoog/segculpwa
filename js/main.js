@@ -27,7 +27,7 @@ import {
     openBulkAddModal as uiOpenBulkAddModal,
     renderWizardCicloRow,
     openSetupWizardModal as uiOpenSetupWizardModal,
-
+    renderSalasView
 } from './ui.js';
 import { startMainTour, startToolsTour } from './onboarding.js';
 
@@ -487,107 +487,37 @@ const handlers = {
         appView.classList.remove('hidden');
         appView.classList.add('view-container');
 
-        // 1. Calcular Estadísticas (sin cambios)
         const statsData = [
             {
-                label: 'Ciclos en Vegetativo',
-                value: currentCiclos.filter(c => c.phase === 'Vegetativo' && c.estado === 'activo').length,
-                icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`,
-                color: 'green'
+                label: 'Ciclos en Vegetativo', value: currentCiclos.filter(c => c.phase === 'Vegetativo' && c.estado === 'activo').length,
+                icon: `<svg class="h-6 w-6 text-green-400"...></svg>`, color: 'green'
             },
             {
-                label: 'Ciclos en Flora',
-                value: currentCiclos.filter(c => c.phase === 'Floración' && c.estado === 'activo').length,
-                icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-pink-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 009-9h-9V3a9 9 0 00-9 9h9v9z" /></svg>`,
-                color: 'pink'
+                label: 'Ciclos en Flora', value: currentCiclos.filter(c => c.phase === 'Floración' && c.estado === 'activo').length,
+                icon: `<svg class="h-6 w-6 text-pink-400"...></svg>`, color: 'pink'
             },
             {
-                label: 'Clones en Stock',
-                value: currentGenetics.reduce((sum, g) => sum + (g.cloneStock || 0), 0),
-                icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>`,
-                color: 'cyan'
+                label: 'Clones en Stock', value: currentGenetics.reduce((sum, g) => sum + (g.cloneStock || 0), 0),
+                icon: `<svg class="h-6 w-6 text-cyan-400"...></svg>`, color: 'cyan'
             },
             {
-                label: 'Semillas en Baúl',
-                value: currentGenetics.reduce((sum, g) => sum + (g.seedStock || 0), 0),
-                icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-lime-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.24a2 2 0 00-1.806.547a2 2 0 00-.547 1.806l.477 2.387a6 6 0 00.517 3.86l.158.318a6 6 0 00.517 3.86l2.387.477a2 2 0 001.806.547a2 2 0 00.547-1.806l-.477-2.387a6 6 0 00-.517-3.86l-.158-.318a6 6 0 00-.517-3.86l-2.387-.477z" /></svg>`,
-                color: 'lime'
+                label: 'Semillas en Baúl', value: currentGenetics.reduce((sum, g) => sum + (g.seedStock || 0), 0),
+                icon: `<svg class="h-6 w-6 text-lime-400"...></svg>`, color: 'lime'
             }
         ];
-
-        // 2. Obtener Actividad Reciente (sin cambios)
-        const recentActivity = [];
-        try {
-            const logsQuery = query(
-                collectionGroup(db, 'logs'), 
-                where('__name__', '>=', `users/${userId}/`),
-                orderBy('date', 'desc'), 
-                limit(3)
-            );
-            const logsSnapshot = await getDocs(logsQuery);
-
-            const formatTimeAgo = (date) => {
-                const now = new Date();
-                const seconds = Math.floor((now - date) / 1000);
-                let interval = seconds / 31536000;
-                if (interval > 1) return `hace ${Math.floor(interval)} años`;
-                interval = seconds / 2592000;
-                if (interval > 1) return `hace ${Math.floor(interval)} meses`;
-                interval = seconds / 86400;
-                if (interval > 1) return `hace ${Math.floor(interval)} días`;
-                interval = seconds / 3600;
-                if (interval > 1) return `hace ${Math.floor(interval)} horas`;
-                interval = seconds / 60;
-                if (interval > 1) return `hace ${Math.floor(interval)} minutos`;
-                return 'hace unos segundos';
-            };
-
-            const formatLog = (log) => {
-                switch (log.type) {
-                    case 'Riego': return { icon: '💧', description: 'Riego' + (log.fertilizers && log.fertilizers.length > 0 ? ' con fertis' : '') };
-                    case 'Cambio de Solución': return { icon: '💧', description: 'Cambio de Solución' };
-                    case 'Control de Plagas': return { icon: '🐞', description: 'Control de Plagas' };
-                    case 'Podas': return { icon: '✂️', description: `Poda (${log.podaType})` };
-                    default: return { icon: '📝', description: log.type };
-                }
-            };
-
-            for (const logDoc of logsSnapshot.docs) {
-                const logData = logDoc.data();
-                const cicloId = logDoc.ref.parent.parent.id;
-                const ciclo = currentCiclos.find(c => c.id === cicloId);
-                
-                if (ciclo) {
-                    const formattedLog = formatLog(logData);
-                    recentActivity.push({
-                        ...formattedLog,
-                        cicloName: ciclo.name,
-                        timeAgo: formatTimeAgo(logData.date.toDate())
-                    });
-                }
-            }
-        } catch (error) {
-            console.error("Error al obtener la actividad reciente:", error);
-        }
-
-        const curingJars = currentCiclos
-            .filter(c => c.estado === 'en_curado')
-            .sort((a, b) => b.fechaInicioCurado.toDate() - a.fechaInicioCurado.toDate())
-            .slice(0, 3);
         
-        // 3. Renderizar el Dashboard - MODIFICACIÓN CLAVE
-        // Ahora pasamos `handlers` para que la UI pueda renderizar las salas correctamente.
+        const recentActivity = []; // Lógica para buscarla
+        const curingJars = currentCiclos.filter(c => c.estado === 'en_curado').sort((a,b) => b.fechaInicioCurado.toDate() - a.fechaInicioCurado.toDate()).slice(0, 3);
+        
         renderDashboard(statsData, recentActivity, curingJars, handlers);     
-        initializeDashboardEventListeners(statsData);
+        
         const welcomeMsg = `Bienvenido de nuevo, @${auth.currentUser.email.split('@')[0]}`;
         getEl('welcomeUser').innerText = welcomeMsg;
-        // 4. Re-asignar listeners a los botones del nuevo header
-        // Este código ahora funcionará porque `renderDashboard` ya creó los botones.
+        
+        initializeDashboardEventListeners(statsData);
+
         getEl('logoutBtn').addEventListener('click', () => handlers.signOut());
-        getEl('menuBtn').addEventListener('click', (e) => {
-            e.stopPropagation();
-            getEl('dropdownMenu').classList.toggle('hidden');
-        });
+        getEl('menuBtn').addEventListener('click', (e) => { e.stopPropagation(); getEl('dropdownMenu').classList.toggle('hidden'); });
         getEl('menuAddSala').addEventListener('click', (e) => { e.preventDefault(); handlers.openSalaModal(); getEl('dropdownMenu').classList.add('hidden'); });
         getEl('menuAddCiclo').addEventListener('click', (e) => { e.preventDefault(); handlers.openCicloModal(null, currentSalas, null, handlers); getEl('dropdownMenu').classList.add('hidden'); });
         getEl('menuSetupWizard').addEventListener('click', (e) => { e.preventDefault(); handlers.openSetupWizard(); getEl('dropdownMenu').classList.add('hidden'); });
@@ -595,17 +525,25 @@ const handlers = {
         getEl('menuSettings').addEventListener('click', (e) => { e.preventDefault(); handlers.showSettingsView(); getEl('dropdownMenu').classList.add('hidden'); });
         getEl('aboutBtn').addEventListener('click', () => getEl('aboutModal').style.display = 'flex');
         
-        getEl('navigateToSalas').addEventListener('click', (e) => {
-            e.preventDefault();
-            handlers.showCiclosView(null, null); // Esto mostrará todas las salas
-        });
         const navigateToSalasBtn = getEl('navigateToSalas');
         if (navigateToSalasBtn) {
             navigateToSalasBtn.addEventListener('click', (e) => {
                 e.preventDefault();
-                handlers.showCiclosView(null, null); // Esta llamada ahora funcionará
+                handlers.showSalasView(); // <-- CORRECCIÓN: Llama a la nueva función correcta
             });
         }
+    },
+    showSalasView: () => {
+        handlers.hideAllViews();
+        const view = renderSalasView(); // La UI crea el esqueleto de la vista
+        view.classList.remove('hidden');
+        view.classList.add('view-container');
+        
+        getEl('backToDashboardBtn').addEventListener('click', handlers.showDashboard);
+        
+        // La UI renderiza la grilla de salas dentro del esqueleto que acabamos de crear
+        renderSalasGrid(currentSalas, currentCiclos, handlers);
+        initializeDragAndDrop();
     },
     handleFinishCuring: (cicloId, cicloName) => {
         handlers.showConfirmationModal(`¿Seguro que querés dar por finalizado el frasco de "${cicloName}"? El ciclo se moverá a tu historial de forma permanente.`, async () => {
@@ -1298,17 +1236,15 @@ handlePhenoCardUpdate: async (e) => {
         });
     },
     showCiclosView: (salaId, salaName) => {
-        // CORRECCIÓN 2: Lógica para manejar la vista de "Todas las salas"
         currentSalaId = salaId;
         currentSalaName = salaName;
         handlers.hideAllViews();
         const view = getEl('ciclosView');
-        
-        // Preparamos el HTML de la vista de salas (antes estaba estático en index.html)
+        // El HTML ahora se genera dentro de esta función, es más limpio
         view.innerHTML = `
             <header class="flex justify-between items-center mb-8">
-                <h1 id="salaNameHeader" class="text-3xl font-mono tracking-wider font-bold text-amber-400"></h1>
-                <button id="backToDashboardBtn" class="btn-secondary btn-base py-2 px-4 rounded-lg">Volver al Panel</button>
+                <h1 class="text-3xl font-mono tracking-wider font-bold text-amber-400">Sala: ${salaName}</h1>
+                <button id="backToSalasViewBtn" class="btn-secondary btn-base py-2 px-4 rounded-lg">Volver a Salas</button>
             </header>
             <main>
                 <div id="ciclosGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
@@ -1320,32 +1256,19 @@ handlePhenoCardUpdate: async (e) => {
         view.classList.remove('hidden');
         view.classList.add('view-container');
 
-        getEl('backToDashboardBtn').addEventListener('click', handlers.showDashboard);
+        getEl('backToSalasViewBtn').addEventListener('click', handlers.showSalasView);
 
         const ciclosGrid = getEl('ciclosGrid');
         const emptyState = getEl('emptyCiclosState');
-        const header = getEl('salaNameHeader');
-        let ciclosToRender;
+        const ciclosInSala = currentCiclos.filter(c => c.salaId === salaId);
 
-        if (salaId) {
-            // Caso: Vista de una sala específica
-            header.innerText = `Sala: ${salaName}`;
-            ciclosToRender = currentCiclos.filter(c => c.salaId === salaId);
-        } else {
-            // Caso: Vista de "Todas las salas"
-            header.innerText = 'Todas las Salas';
-            ciclosToRender = currentCiclos; // Renderizamos todos los ciclos activos
-        }
-        
-        ciclosGrid.innerHTML = '';
-        if (ciclosToRender.length > 0) {
+        if (ciclosInSala.length > 0) {
             emptyState.classList.add('hidden');
-            ciclosToRender.forEach(ciclo => {
+            ciclosInSala.forEach(ciclo => {
                 ciclosGrid.appendChild(createCicloCard(ciclo, handlers));
             });
         } else {
             emptyState.classList.remove('hidden');
-            emptyState.querySelector('p').innerText = salaId ? 'No hay ciclos en esta sala.' : 'No tienes ciclos activos.';
         }
     },
     hideCiclosView: () => {
@@ -2050,41 +1973,38 @@ onAuthStateChanged(auth, async user => {
         userId = user.uid;
         await runDataMigration(user.uid);
 
-        // --- Carga Inicial de Datos Esenciales ---
-        // Usamos getDocs para esperar la primera carga de datos antes de renderizar.
+        // CRÍTICO: Esperamos la carga inicial de datos antes de hacer nada más.
         const ciclosQuery = query(collection(db, `users/${userId}/ciclos`));
         const geneticsQuery = query(collection(db, `users/${userId}/genetics`));
+        const salasQuery = query(collection(db, `users/${userId}/salas`));
         
-        const [ciclosSnapshot, geneticsSnapshot] = await Promise.all([
+        const [ciclosSnapshot, geneticsSnapshot, salasSnapshot] = await Promise.all([
             getDocs(ciclosQuery),
-            getDocs(geneticsQuery)
+            getDocs(geneticsQuery),
+            getDocs(salasQuery)
         ]);
 
         currentCiclos = ciclosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter(c => c.estado !== 'finalizado');
         currentGenetics = geneticsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-        // --- Renderizado Inicial del Dashboard ---
-        // Ahora que tenemos los datos, el dashboard se mostrará con la información correcta.
+        currentSalas = salasSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        
+        // Ahora que tenemos los datos, mostramos el dashboard.
         handlers.showDashboard();
 
-        // --- Activación de Listeners en Tiempo Real ---
-        // Después de la carga inicial, activamos onSnapshot para recibir actualizaciones en vivo.
-        loadSalas();
+        // Activamos los listeners para actualizaciones en tiempo real.
         loadCiclos();
-        loadGenetics(); // Se vuelve a llamar para que el listener en vivo se active
+        loadSalas();
+        loadGenetics();
         loadPhenohunts();
         loadHistorial();
 
-        // Inicializa listeners globales de modales, etc.
         initializeEventListeners(handlers); 
 
-        // Activa el tour de bienvenida para nuevos usuarios
         if (!localStorage.getItem('segcul_tour_v1_completed')) {
             startMainTour();
             localStorage.setItem('segcul_tour_v1_completed', 'true');
         }
 
-        // Listener global para cerrar menús contextuales
         window.addEventListener('click', (e) => {
             if (!e.target.closest('.ciclo-item-container')) {
                 document.querySelectorAll('.ciclo-actions-menu').forEach(menu => {

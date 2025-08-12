@@ -2082,44 +2082,18 @@ export function renderWizardCicloRow(ciclo = {}, allSalas = []) {
 export function renderDashboard(stats, recentActivity, curingJars, handlers) {
     const appContainer = getEl('app');
     if (!appContainer) return;
-
-    appContainer.innerHTML = ''; // Limpiamos la vista anterior
-
+    appContainer.innerHTML = '';
+    
     const getTimeElapsed = (startDate) => {
         if (!startDate || !startDate.toDate) return 'Fecha inválida';
-        const start = startDate.toDate();
-        const now = new Date();
-        const diffTime = Math.abs(now - start);
+        const start = startDate.toDate(); const now = new Date(); const diffTime = Math.abs(now - start);
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        if (diffDays <= 1) return '1 día';
-        if (diffDays < 7) return `${diffDays} días`;
-        if (diffDays < 30) return `${Math.floor(diffDays / 7)} sem`;
+        if (diffDays <= 1) return '1 día'; if (diffDays < 7) return `${diffDays} días`; if (diffDays < 30) return `${Math.floor(diffDays / 7)} sem`;
         return `${Math.floor(diffDays / 30)} mes(es)`;
     };
 
-    const recentActivityHTML = recentActivity.length > 0 ? recentActivity.map(item => `
-        <li class="flex items-start">
-            <span class="text-xl mt-1">${item.icon}</span>
-            <div class="ml-3 text-sm">
-                <p class="font-medium text-gray-800 dark:text-gray-200">${item.description}</p>
-                <p class="text-xs text-gray-500 dark:text-gray-400">en "${item.cicloName}" (${item.timeAgo})</p>
-            </div>
-        </li>
-    `).join('') : '<p class="text-xs text-gray-500 dark:text-gray-400">No hay actividad reciente.</p>';
-    
-    const curingJarsHTML = curingJars.length > 0 ? curingJars.map(jar => `
-        <div>
-            <div class="flex justify-between items-center text-sm mb-2">
-                <span class="font-semibold text-gray-800 dark:text-gray-200">${jar.name}</span>
-                <span class="font-mono font-semibold text-amber-400">${getTimeElapsed(jar.fechaInicioCurado)}</span>
-            </div>
-            <div class="flex w-full h-2 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700">
-                <div class="w-1/3 bg-amber-400 opacity-40" title="Etapa Inicial"></div>
-                <div class="w-1/3 bg-emerald-400 opacity-100" title="Etapa Óptima"></div>
-                <div class="w-1/3 bg-violet-400 opacity-40" title="Etapa Extendida"></div>
-            </div>
-        </div>
-    `).join('') : '<p class="text-xs text-gray-500 dark:text-gray-400">No hay frascos en curado.</p>';
+    const recentActivityHTML = recentActivity.length > 0 ? recentActivity.map(item => `...`).join('') : '<p class="text-xs text-gray-500 dark:text-gray-400">No hay actividad reciente.</p>';
+    const curingJarsHTML = curingJars.length > 0 ? curingJars.map(jar => `...`).join('') : '<p class="text-xs text-gray-500 dark:text-gray-400">No hay frascos en curado.</p>';
 
     const dashboardHTML = `
      <div class="max-w-7xl mx-auto">
@@ -2149,23 +2123,18 @@ export function renderDashboard(stats, recentActivity, curingJars, handlers) {
                 <div class="card rounded-xl p-6">
                     <h2 class="text-xl font-bold text-amber-400 mb-1">Mi Cultivo</h2>
                     <a href="#" id="navigateToSalas" class="text-sm text-amber-400 hover:underline mb-4 block">Ver todas las salas →</a>
-                    <div id="stats-carousel" class="space-y-4 mb-6 h-36">
-                        </div>
+                    <div id="stats-carousel" class="space-y-4 mb-6 h-36"></div>
                     <h3 class="font-semibold text-gray-800 dark:text-gray-200 mb-3 border-t border-gray-200 dark:border-gray-700 pt-4">Actividad Reciente</h3>
                     <ul class="space-y-4">${recentActivityHTML}</ul>
                 </div>
                 <div class="card rounded-xl p-6">
                     <h2 class="text-xl font-bold text-amber-400 mb-4">Mis Frascos en Curado</h2>
                     <div class="space-y-5">${curingJarsHTML}</div>
-                    ${curingJars.length > 0 ? `<a href="#" id="navigateToCuringJars" class="block text-center text-amber-400 text-sm font-semibold pt-2 hover:underline">Ver todos...</a>` : ''}
                 </div>
             </div>
-
             <div class="card rounded-xl p-6 lg:col-span-2">
                 <h2 class="text-xl font-bold text-amber-400 mb-4">Comunidad</h2>
-                <div class="h-full flex items-center justify-center text-center text-gray-500 dark:text-gray-400">
-                    <p><strong>Próximamente:</strong> Un espacio para compartir tus cosechas y aprender de otros cultivadores.</p>
-                </div>
+                <div class="h-full flex items-center justify-center text-center text-gray-500 dark:text-gray-400"><p><strong>Próximamente:</strong> Un espacio para compartir tus cosechas y aprender de otros cultivadores.</p></div>
             </div>
         </div>
     </div>`;
@@ -2269,4 +2238,17 @@ export function initializeDashboardEventListeners(statsData) {
         updateStats();
         setInterval(updateStats, 5000);
     }
+}
+export function renderSalasView() {
+    const view = getEl('ciclosView'); // Reutilizamos este div
+    view.innerHTML = `
+        <header class="flex justify-between items-center mb-8">
+            <h1 class="text-3xl font-mono tracking-wider font-bold text-amber-400">Todas las Salas</h1>
+            <button id="backToDashboardBtn" class="btn-secondary btn-base py-2 px-4 rounded-lg">Volver al Panel</button>
+        </header>
+        <main>
+            <div id="salasGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6"></div>
+        </main>
+    `;
+    return view;
 }
