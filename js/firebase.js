@@ -22,7 +22,7 @@ const stagingConfig = {
 };
 
 // --- LÓGICA DE SELECCIÓN DE AMBIENTE ---
-const isProduction = window.location.hostname === 'https://segcul.netlify.app/';
+const isProduction = window.location.hostname === 'segcul.web.app';
 const firebaseConfig = isProduction ? prodConfig : stagingConfig;
 
 // Si estás probando localmente, siempre usará STAGING.
