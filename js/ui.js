@@ -969,6 +969,10 @@ export function renderCicloDetails(ciclo, handlers) {
 
 export function renderToolsView() {
     const html = `
+        <header class="flex justify-between items-center mb-4">
+            <h1 class="text-3xl font-bold text-amber-400 font-mono tracking-wider">Herramientas</h1>
+            <button id="backToDashboardBtn" class="btn-secondary btn-base py-2 px-4 rounded-lg">Volver al Panel</button>
+        </header>
         <div class="mb-6 border-b border-gray-300 dark:border-gray-700">
             <nav class="flex space-x-4 sm:space-x-8 overflow-x-auto" aria-label="Tabs">
                 <button id="geneticsTabBtn" class="py-4 px-1 border-b-2 font-medium text-lg text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:border-gray-400 dark:hover:border-gray-300 whitespace-nowrap btn-base">Genéticas</button>
@@ -1043,7 +1047,7 @@ export function renderSettingsView() {
     const html = `
         <header class="flex justify-between items-center mb-8">
             <h1 class="text-3xl font-bold text-amber-400 font-mono tracking-wider">Ajustes</h1>
-            <button id="backToPanelFromSettingsBtn" class="btn-secondary btn-base py-2 px-4 rounded-lg">Volver al Panel</button>
+            <button id="backToDashboardBtn" class="btn-secondary btn-base py-2 px-4 rounded-lg">Volver al Panel</button>
         </header>
         <div class="max-w-2xl mx-auto space-y-8">
             <div class="card p-6">

@@ -1,0 +1,8 @@
+{
+  "projects": {
+    "staging": "segcul-staging",
+    "default": "betasegui-8cdaa"
+  },
+  "targets": {},
+  "etags": {}
+}

@@ -483,10 +483,60 @@ const handlers = {
         uiOpenSetupWizardModal(handlers);
     },
     showDashboard: () => {
-        const statsData = [/* ... Lógica para crear stats ... */];
-        const recentActivity = [];
-        const curingJars = currentCiclos.filter(c => c.estado === 'en_curado').sort((a,b) => b.fechaInicioCurado.toDate() - a.fechaInicioCurado.toDate()).slice(0, 3);
+        // --- LÓGICA RESTAURADA PARA CALCULAR DATOS DINÁMICOS ---
+        const activeCiclos = currentCiclos.filter(c => c.estado === 'activo');
+        
+        // Calculamos el total de plantas sumando las cantidades de genéticas en todos los ciclos activos
+        const totalPlants = activeCiclos.reduce((acc, ciclo) => {
+            return acc + (ciclo.genetics ? ciclo.genetics.reduce((pAcc, gen) => pAcc + (gen.quantity || 0), 0) : 0);
+        }, 0);
+
+        // Creamos los datos para las tarjetas de estadísticas
+        const statsData = [
+            { label: 'Salas Activas', value: currentSalas.length, icon: '🚪', color: 'amber' },
+            { label: 'Ciclos Activos', value: activeCiclos.length, icon: '🔄', color: 'pink' },
+            { label: 'Plantas Totales', value: totalPlants, icon: '🌿', color: 'green' },
+            { label: 'Genéticas Únicas', value: currentGenetics.length, icon: '🧬', color: 'purple' },
+        ];
+
+        // Obtenemos la actividad reciente basándonos en los últimos logs registrados
+        const recentActivity = currentCiclos
+            .filter(c => c.lastLogTimestamp)
+            .sort((a, b) => b.lastLogTimestamp.toDate() - a.lastLogTimestamp.toDate())
+            .slice(0, 3) // Tomamos los 3 más recientes
+            .map(c => {
+                const timeDiff = new Date() - c.lastLogTimestamp.toDate();
+                const hoursAgo = Math.round(timeDiff / (1000 * 60 * 60));
+                const timeAgo = hoursAgo < 1 ? 'Recién' : (hoursAgo === 1 ? 'Hace 1 hora' : `Hace ${hoursAgo} horas`);
+
+                return {
+                    icon: '📝',
+                    description: `Nuevo registro: "${c.lastLogType || 'Actividad'}"`,
+                    cicloName: c.name,
+                    timeAgo: timeAgo
+                };
+            });
+            
+        const curingJars = currentCiclos.filter(c => c.estado === 'en_curado')
+            .sort((a,b) => b.fechaInicioCurado.toDate() - a.fechaInicioCurado.toDate())
+            .slice(0, 3);
+        
+        // --- FIN DE LA LÓGICA RESTAURADA ---
+
+        // 1. Renderizamos el Dashboard con los datos que acabamos de calcular
         renderDashboard(statsData, recentActivity, curingJars);
+        
+        // 2. Inicializamos los listeners específicos del dashboard (como el carrusel de stats)
+        initializeDashboardEventListeners(statsData);
+        
+        // 3. Conectamos el botón "Ver todas las salas" que está dentro del dashboard
+        const navigateToSalasBtn = getEl('navigateToSalas');
+        if(navigateToSalasBtn) {
+            navigateToSalasBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                handlers.showSalasView();
+            });
+        }
     },
     showSalasView: () => {
         renderSalasView(currentSalas, currentCiclos, handlers);
@@ -1267,11 +1317,9 @@ handlePhenoCardUpdate: async (e) => {
         detailView.classList.remove('hidden');
         detailView.classList.add('view-container');
 
-        getEl('backToCiclosBtn').addEventListener('click', () => {
-            handlers.hideAllViews();
-            getEl('app').classList.remove('hidden');
-            getEl('app').classList.add('view-container');
-        });
+        // CORREGIDO: El botón ahora llama directamente a showDashboard.
+        getEl('backToCiclosBtn').addEventListener('click', () => handlers.showDashboard());
+
         const addWeekBtn = getEl('add-week-btn');
         if(addWeekBtn) addWeekBtn.addEventListener('click', () => handlers.handleAddWeek(ciclo.id));
         
@@ -1311,10 +1359,10 @@ handlePhenoCardUpdate: async (e) => {
         if(!container) return;
 
         getEl('view-title').innerText = 'Herramientas';
-        container.innerHTML = renderToolsView(); // renderToolsView solo devuelve el HTML
-        
-        // Re-asignar listeners específicos de la vista de Herramientas
-        getEl('add-bulk-btn').addEventListener('click', handlers.openBulkAddModal);
+        container.innerHTML = renderToolsView();
+
+        getEl('backToDashboardBtn').addEventListener('click', handlers.showDashboard);
+        getEl('add-bulk-btn').addEventListener('click', handlers.openBulkAddModal); // <--- Este es el botón que no funcionaba
         getEl('add-to-catalog-btn').addEventListener('click', handlers.openAddToCatalogModal);
         getEl('geneticsTabBtn').addEventListener('click', () => handlers.switchToolsTab('genetics'));
         getEl('stockTabBtn').addEventListener('click', () => handlers.switchToolsTab('stock'));
@@ -1344,6 +1392,9 @@ handlePhenoCardUpdate: async (e) => {
 
         getEl('view-title').innerText = 'Ajustes';
         container.innerHTML = renderSettingsView();
+
+        // AÑADIDO: Listener para que el botón 'backToDashboardBtn' funcione.
+        getEl('backToDashboardBtn').addEventListener('click', handlers.showDashboard);
 
         // Re-asignar listeners específicos de la vista de Ajustes
         getEl('changePasswordForm').addEventListener('submit', handlers.handleChangePassword);
