@@ -296,10 +296,10 @@ function loadCiclos() {
         // `currentCiclos` ahora solo contendrá los que están 'activos' o 'en_curado', pero no los 'finalizados'.
         currentCiclos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter(c => c.estado !== 'finalizado');
         
-        // Si el dashboard es la vista activa, lo refrescamos con los datos actualizados.
-        if (!getEl('app').classList.contains('hidden')) {
-            handlers.showDashboard();
-        }
+        const appShellElement = getEl('app-shell');
+if (appShellElement && !appShellElement.classList.contains('hidden')) {
+    handlers.showDashboard();
+}
         
         // Si la vista de detalle de un ciclo está activa, la refrescamos.
         if (!getEl('cicloDetailView').classList.contains('hidden')) {
@@ -324,9 +324,17 @@ function loadGenetics() {
     geneticsUnsubscribe = onSnapshot(q, (snapshot) => {
         currentGenetics = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         currentGenetics.sort((a, b) => (a.position || 0) - (b.position || 0));
-        if(!getEl('toolsView').classList.contains('hidden')) {
-            handlers.handleToolsSearch({ target: getEl('searchTools') });
-        }
+        const toolsViewElement = getEl('toolsView');
+
+// Primero preguntamos: ¿Existe el elemento "toolsView"?
+// Y si existe, preguntamos: ¿No tiene la clase 'hidden'?
+if (toolsViewElement && !toolsViewElement.classList.contains('hidden')) {
+    // Como buena práctica, también verificamos que el campo de búsqueda exista
+    const searchToolsElement = getEl('searchTools');
+    if (searchToolsElement) {
+        handlers.handleToolsSearch({ target: searchToolsElement });
+    }
+}
     });
 }
 
