@@ -22,7 +22,8 @@ import {
     openPhenoEditModal as uiOpenPhenoEditModal,
     openAddToCatalogModal as uiOpenAddToCatalogModal,
     openPromoteToGeneticModal,
-    renderDashboard, // <-- ¡AQUÍ ESTÁ LA FUNCIÓN QUE FALTABA!
+    renderDashboard,
+    initializeDashboardEventListeners,
     openBulkAddModal as uiOpenBulkAddModal,
     renderWizardCicloRow,
     openSetupWizardModal as uiOpenSetupWizardModal,
@@ -487,19 +488,31 @@ const handlers = {
         appView.classList.add('view-container');
 
         // 1. Calcular Estadísticas (sin cambios)
-        const stats = [
-            { 
-                label: 'Ciclos Activos', 
-                value: currentCiclos.length,
-                icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h5M20 20v-5h-5" /><path stroke-linecap="round" stroke-linejoin="round" d="M4 9a9 9 0 0114.65-5.35L20 5" /><path stroke-linecap="round" stroke-linejoin="round" d="M20 15a9 9 0 01-14.65 5.35L4 19" /></svg>`,
-                color: 'amber'
-            },
-            { 
-                label: 'Clones en Stock', 
-                value: currentGenetics.reduce((sum, g) => sum + (g.cloneStock || 0), 0),
-                icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7v8a2 2 0 002 2h4M8 7a2 2 0 012-2h4a2 2 0 012 2v8a2 2 0 01-2 2h-4a2 2 0 01-2-2V7z" /></svg>`,
-                color: 'cyan'
-            }
+        const statsData = [
+            {
+        label: 'Ciclos en Vegetativo',
+        value: currentCiclos.filter(c => c.phase === 'Vegetativo' && c.estado === 'activo').length,
+        icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`,
+        color: 'green'
+    },
+    {
+        label: 'Ciclos en Flora',
+        value: currentCiclos.filter(c => c.phase === 'Floración' && c.estado === 'activo').length,
+        icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-pink-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 009-9h-9V3a9 9 0 00-9 9h9v9z" /></svg>`,
+        color: 'pink'
+    },
+    {
+        label: 'Clones en Stock',
+        value: currentGenetics.reduce((sum, g) => sum + (g.cloneStock || 0), 0),
+        icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7v8a2 2 0 002 2h4M8 7a2 2 0 012-2h4a2 2 0 012 2v8a2 2 0 01-2 2h-4a2 2 0 01-2-2V7z" /></svg>`,
+        color: 'cyan'
+    },
+    {
+        label: 'Semillas en Baúl',
+        value: currentGenetics.reduce((sum, g) => sum + (g.seedStock || 0), 0),
+        icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-lime-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.24a2 2 0 00-1.806.547a2 2 0 00-.547 1.806l.477 2.387a6 6 0 00.517 3.86l.158.318a6 6 0 00.517 3.86l2.387.477a2 2 0 001.806.547a2 2 0 00.547-1.806l-.477-2.387a6 6 0 00-.517-3.86l-.158-.318a6 6 0 00-.517-3.86l-2.387-.477z" /></svg>`,
+        color: 'lime'
+    }
         ];
 
         // 2. Obtener Actividad Reciente (sin cambios)
@@ -564,8 +577,8 @@ const handlers = {
         
         // 3. Renderizar el Dashboard - MODIFICACIÓN CLAVE
         // Ahora pasamos `handlers` para que la UI pueda renderizar las salas correctamente.
-        renderDashboard(stats, recentActivity, curingJars, handlers);     
-
+        renderDashboard(statsData, recentActivity, curingJars, handlers);     
+        initializeDashboardEventListeners(statsData);
         // 4. Re-asignar listeners a los botones del nuevo header
         // Este código ahora funcionará porque `renderDashboard` ya creó los botones.
         getEl('logoutBtn').addEventListener('click', () => handlers.signOut());
@@ -2011,6 +2024,13 @@ onAuthStateChanged(auth, async user => {
         // Pequeño delay para dar tiempo a que los datos iniciales carguen antes de mostrar el dashboard.
         setTimeout(() => {
             handlers.showDashboard();
+
+            // Reactivamos el tour de Shepherd para nuevos usuarios
+            if (!localStorage.getItem('segcul_tour_v1_completed')) {
+                startMainTour();
+                localStorage.setItem('segcul_tour_v1_completed', 'true');
+            }
+
         }, 250);
 
         initializeEventListeners(handlers); // Inicializa listeners globales de modales, etc.

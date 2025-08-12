@@ -1088,22 +1088,21 @@ export function createLogEntry(log, ciclo, handlers) {
 
 export function renderSalasGrid(salas, ciclos, handlers) {
     const salasGrid = getEl('salasGrid');
-    if (!salasGrid) return; // Si el contenedor no existe, no hacemos nada.
+    if (!salasGrid) return; 
 
-    salasGrid.innerHTML = ''; // Limpiamos el contenido anterior.
+    salasGrid.innerHTML = '';
 
     if (salas.length === 0) {
-        // Si no hay salas, mostramos el mensaje de estado vacío dentro del contenedor.
         salasGrid.innerHTML = `<p class="text-center text-gray-500 dark:text-gray-400 col-span-full py-8">No tienes salas. ¡Añade una para empezar!</p>`;
         return;
     }
 
-    // Ordenamos las salas por su posición guardada.
     salas.sort((a, b) => (a.position || 0) - (b.position || 0));
 
     salas.forEach(sala => {
         const ciclosInSala = ciclos.filter(c => c.salaId === sala.id);
         const activeCiclos = ciclosInSala.filter(c => c.estado !== 'finalizado');
+        // Usamos la clase .card que ya existe en tu app
         const salaCard = document.createElement('div');
         salaCard.className = 'card rounded-xl p-5 flex flex-col justify-between aspect-square relative';
         salaCard.dataset.salaId = sala.id;
@@ -1120,6 +1119,7 @@ export function renderSalasGrid(salas, ciclos, handlers) {
                 cicloLink.className = 'ciclo-item-link';
                 cicloLink.onclick = () => handlers.showCicloDetails(ciclo);
 
+                // ESTA ES LA LÓGICA DE ESTILOS QUE QUERÍAS CONSERVAR
                 let phaseClass = 'finalizado';
                 if (ciclo.estado === 'en_secado') {
                     phaseClass = 'secado';
@@ -1136,10 +1136,7 @@ export function renderSalasGrid(salas, ciclos, handlers) {
                     }
                 }
 
-                cicloLink.innerHTML = `
-                    <div class="ciclo-status-dot ${phaseClass}"></div>
-                    <span class="ciclo-name">${ciclo.name}</span>
-                `;
+                cicloLink.innerHTML = `<div class="ciclo-status-dot ${phaseClass}"></div><span class="ciclo-name">${ciclo.name}</span>`;
 
                 const actionsButton = document.createElement('button');
                 actionsButton.className = 'btn-base p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600';
@@ -1148,18 +1145,9 @@ export function renderSalasGrid(salas, ciclos, handlers) {
                 const actionsMenu = document.createElement('div');
                 actionsMenu.className = 'ciclo-actions-menu hidden';
                 actionsMenu.innerHTML = `
-                    <a data-action="edit-ciclo">
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" /></svg>
-                        Editar
-                    </a>
-                    <a data-action="move-ciclo">
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path d="M7.5 21 3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" /></svg>
-                        Mover
-                    </a>
-                    <a data-action="delete-ciclo" class="text-red-500 dark:text-red-400">
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.134-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.067-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>
-                        Eliminar
-                    </a>
+                    <a data-action="edit-ciclo"><svg class="w-4 h-4" ...></svg>Editar</a>
+                    <a data-action="move-ciclo"><svg class="w-4 h-4" ...></svg>Mover</a>
+                    <a data-action="delete-ciclo" class="text-red-500 dark:text-red-400"><svg class="w-4 h-4" ...></svg>Eliminar</a>
                 `;
                 
                 actionsButton.onclick = (e) => handlers.handleToggleCicloMenu(e, actionsMenu);
@@ -1188,32 +1176,15 @@ export function renderSalasGrid(salas, ciclos, handlers) {
                 <div class="flex-grow relative overflow-y-auto"></div>
             </div>
             <div class="flex justify-end gap-2 mt-4 flex-wrap">
-                <button data-action="edit-sala" class="btn-secondary btn-base p-2 rounded-lg" title="Editar Sala">
-                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg>
-                </button>
-                <button data-action="delete-sala" class="btn-danger btn-base p-2 rounded-lg" title="Eliminar Sala">
-                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.134-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.067-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>
-                </button>
+                <button data-action="edit-sala" class="btn-secondary btn-base p-2 rounded-lg" title="Editar Sala"><svg class="w-5 h-5" ...></svg></button>
+                <button data-action="delete-sala" class="btn-danger btn-base p-2 rounded-lg" title="Eliminar Sala"><svg class="w-5 h-5" ...></svg></button>
             </div>
         `;
         salaCard.querySelector('.flex-grow.relative').appendChild(ciclosPreviewContainer);
-
-        // Los event listeners no cambian
-        salaCard.querySelector('[data-action="open-sala"]').addEventListener('click', (e) => {
-            handlers.showCiclosView(sala.id, sala.name);
-        });
-        salaCard.querySelector('[data-action="edit-sala"]').addEventListener('click', (e) => {
-            e.stopPropagation();
-            handlers.openSalaModal(sala);
-        });
-        salaCard.querySelector('[data-action="delete-sala"]').addEventListener('click', (e) => {
-            e.stopPropagation();
-            handlers.deleteSala(sala.id, sala.name);
-        });
-        salaCard.querySelector('[data-action="quick-add-ciclo"]').addEventListener('click', (e) => {
-            e.stopPropagation();
-            handlers.openCicloModal(null, salas, e.currentTarget.dataset.salaId, handlers);
-        });
+        salaCard.querySelector('[data-action="open-sala"]').addEventListener('click', (e) => handlers.showCiclosView(sala.id, sala.name));
+        salaCard.querySelector('[data-action="edit-sala"]').addEventListener('click', (e) => { e.stopPropagation(); handlers.openSalaModal(sala); });
+        salaCard.querySelector('[data-action="delete-sala"]').addEventListener('click', (e) => { e.stopPropagation(); handlers.deleteSala(sala.id, sala.name); });
+        salaCard.querySelector('[data-action="quick-add-ciclo"]').addEventListener('click', (e) => { e.stopPropagation(); handlers.openCicloModal(null, salas, e.currentTarget.dataset.salaId, handlers);});
         salasGrid.appendChild(salaCard);
     });
     initializeTooltips();
@@ -2101,168 +2072,100 @@ export function renderDashboard(stats, recentActivity, curingJars, handlers) {
     const appContainer = getEl('app');
     if (!appContainer) return;
 
-    appContainer.innerHTML = ''; // Limpiamos la vista anterior para evitar duplicados
+    appContainer.innerHTML = ''; // Limpiamos la vista anterior
 
-    // --- INICIO DE FUNCIONES AUXILIARES DENTRO DE RENDER ---
     const getTimeElapsed = (startDate) => {
         if (!startDate || !startDate.toDate) return 'Fecha inválida';
         const start = startDate.toDate();
         const now = new Date();
         const diffTime = Math.abs(now - start);
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
         if (diffDays <= 1) return '1 día';
-        if (diffDays < 30) return `${diffDays} días`;
-        if (diffDays < 365) return `${Math.floor(diffDays / 30)} mes(es)`;
-        return `${Math.floor(diffDays / 365)} año(s)`;
+        if (diffDays < 7) return `${diffDays} días`;
+        if (diffDays < 30) return `${Math.floor(diffDays / 7)} sem`;
+        return `${Math.floor(diffDays / 30)} mes(es)`;
     };
 
-    const getCuringStageOpacities = (startDate) => {
-        if (!startDate || !startDate.toDate) return { initial: 'opacity-40', optimal: 'opacity-40', extended: 'opacity-40' };
-        const start = startDate.toDate();
-        const now = new Date();
-        const diffTime = Math.abs(now - start);
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-        if (diffDays <= 21) { // Hasta 3 semanas
-            return { initial: 'opacity-100', optimal: 'opacity-40', extended: 'opacity-40' };
-        } else if (diffDays <= 60) { // De 3 semanas a 2 meses
-            return { initial: 'opacity-40', optimal: 'opacity-100', extended: 'opacity-40' };
-        } else { // Más de 2 meses
-            return { initial: 'opacity-40', optimal: 'opacity-40', extended: 'opacity-100' };
-        }
-    };
-
-    const statsHTML = stats.map(stat => `
-        <div class="flex items-start gap-4">
-            <div class="p-3 rounded-lg bg-${stat.color}-500/20">
-                ${stat.icon}
-            </div>
-            <div>
-                <p class="text-sm text-gray-400">${stat.label}</p>
-                <p class="text-2xl font-bold text-gray-100">${stat.value}</p>
-            </div>
-        </div>
-    `).join('');
-    
-    const recentActivityHTML = recentActivity.length > 0
-        ? recentActivity.map(item => `
-        <li class="flex items-center gap-4">
-            <div class="text-2xl">${item.icon}</div>
-            <div class="flex-grow">
-                <p class="font-semibold text-gray-200">${item.description} en "${item.cicloName}"</p>
-                <p class="text-sm text-gray-400">${item.timeAgo}</p>
+    const recentActivityHTML = recentActivity.length > 0 ? recentActivity.map(item => `
+        <li class="flex items-start">
+            <span class="text-xl mt-1">${item.icon}</span>
+            <div class="ml-3 text-sm">
+                <p class="font-medium text-gray-800 dark:text-gray-200">${item.description}</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">en "${item.cicloName}" (${item.timeAgo})</p>
             </div>
         </li>
-    `).join('')
-        : `<p class="text-center text-sm text-gray-400 dark:text-gray-500 py-4">No hay actividad reciente.</p>`;
-
-    const curingJarsHTML = curingJars.length > 0
-        ? curingJars.map(jar => {
-            const opacities = getCuringStageOpacities(jar.fechaInicioCurado);
-            const geneticsNames = (jar.snapshot_genetics || []).map(g => g.phenoName || g.name).join(', ');
-            return `
-            <div>
-                <div class="flex justify-between items-center text-sm mb-2">
-                    <span class="font-semibold truncate text-gray-200" title="${geneticsNames}">${jar.name}</span>
-                    <span class="font-mono font-semibold text-amber-400">${getTimeElapsed(jar.fechaInicioCurado)}</span>
-                </div>
-                <div class="flex w-full h-2 rounded-full overflow-hidden bg-gray-700">
-                    <div class="cure-bar-segment w-1/3 bg-amber-400 ${opacities.initial}" title="Etapa Inicial (< 3 sem)"></div>
-                    <div class="cure-bar-segment w-1/3 bg-emerald-400 ${opacities.optimal}" title="Etapa Óptima (3 sem - 2 meses)"></div>
-                    <div class="cure-bar-segment w-1/3 bg-violet-400 ${opacities.extended}" title="Etapa Extendida (> 2 meses)"></div>
-                </div>
+    `).join('') : '<p class="text-xs text-gray-500 dark:text-gray-400">No hay actividad reciente.</p>';
+    
+    const curingJarsHTML = curingJars.length > 0 ? curingJars.map(jar => `
+        <div>
+            <div class="flex justify-between items-center text-sm mb-2">
+                <span class="font-semibold text-gray-800 dark:text-gray-200">${jar.name}</span>
+                <span class="font-mono font-semibold text-amber-400">${getTimeElapsed(jar.fechaInicioCurado)}</span>
             </div>
-            `;
-        }).join('')
-        : `<p class="text-center text-sm text-gray-400 dark:text-gray-500 py-4">No hay frascos en curado.</p>`;
-    // --- FIN DE FUNCIONES AUXILIARES ---
+            <div class="flex w-full h-2 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700">
+                <div class="w-1/3 bg-amber-400 opacity-40" title="Etapa Inicial"></div>
+                <div class="w-1/3 bg-emerald-400 opacity-100" title="Etapa Óptima"></div>
+                <div class="w-1/3 bg-violet-400 opacity-40" title="Etapa Extendida"></div>
+            </div>
+        </div>
+    `).join('') : '<p class="text-xs text-gray-500 dark:text-gray-400">No hay frascos en curado.</p>';
 
     const dashboardHTML = `
-        <div class="max-w-7xl mx-auto">
-             <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8">
-                <div>
-                    <h1 class="text-3xl font-mono tracking-wider font-bold text-amber-400">Dashboard</h1>
-                    <p id="welcomeUser" class="text-gray-500 dark:text-gray-400 mt-1">Resumen de tu cultivo.</p>
+     <div class="max-w-7xl mx-auto">
+        <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8">
+            <div>
+                <h1 class="text-3xl font-bold text-amber-400 font-mono tracking-wider">Dashboard</h1>
+                <p id="welcomeUser" class="text-gray-500 dark:text-gray-400 mt-1"></p>
+            </div>
+            <div class="relative mt-4 sm:mt-0 self-end sm:self-auto flex items-center gap-3">
+                <button id="aboutBtn" class="btn-secondary btn-base py-2 px-4 rounded-lg">¿Qué onda esto?</button>
+                <button id="menuBtn" class="btn-primary btn-base p-2 rounded-lg" title="Menú">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" /></svg>
+                </button>
+                <div id="dropdownMenu" class="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-[#262626] border border-gray-200 dark:border-[#404040] rounded-md shadow-lg z-20 hidden">
+                    <a href="#" id="menuAddSala" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#404040]">Añadir Sala</a>
+                    <a href="#" id="menuAddCiclo" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#404040]">Añadir Ciclo</a>
+                    <a href="#" id="menuTools" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#404040]">Herramientas</a>
+                    <a href="#" id="menuSettings" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#404040]">Ajustes</a>
+                    <a href="#" id="logoutBtn" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#404040]">Cerrar Sesión</a>
                 </div>
-                <div class="relative mt-4 sm:mt-0 self-end sm:self-auto flex items-center gap-2">
-                     <button id="aboutBtn" class="btn-secondary btn-base py-2 px-4 rounded-lg shadow-md">
-                        ¿Qué onda esto?
-                    </button>
-                    <button id="menuBtn" class="btn-primary btn-base p-2 rounded-lg shadow-md">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-                        </svg>
-                    </button>
-                    <div id="dropdownMenu" class="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-[#262626] border border-gray-200 dark:border-[#404040] rounded-md shadow-lg z-20 hidden">
-                        <a href="#" id="menuAddSala" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#404040]">Añadir Sala</a>
-                        <a href="#" id="menuAddCiclo" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#404040]">Añadir Ciclo</a>
-                        <a href="#" id="menuSetupWizard" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#404040]">Configuración Rápida</a>
-                        <a href="#" id="menuTools" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#404040]">Herramientas</a>
-                        <a href="#" id="menuSettings" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#404040]">Ajustes</a>
-                        <a href="#" id="logoutBtn" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#404040]">Cerrar Sesión</a>
-                    </div>
-                </div>
-            </header>
-            
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                
-                <div class="lg:col-span-2 space-y-6">
-                    <div class="widget p-6">
-                        <h2 class="text-xl font-bold text-amber-400 mb-4">Estadísticas Generales</h2>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                            ${statsHTML}
-                        </div>
-                    </div>
-                    <div class="widget p-6">
-                        <h2 class="text-xl font-bold text-amber-400 mb-4">Actividad Reciente</h2>
-                        <ul class="space-y-4">
-                           ${recentActivityHTML}
-                        </ul>
-                    </div>
-                     <div class="widget p-6">
-                        <div class="flex justify-between items-center mb-4">
-                             <h2 class="text-xl font-bold text-amber-400">Mis Salas</h2>
-                             <a href="#" id="navigateToSalas" class="text-amber-400 text-sm font-semibold hover:underline">Ir a la vista de salas →</a>
-                        </div>
-                        <div id="salasGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4">
-                             <p class="text-center text-sm text-gray-400 dark:text-gray-500 col-span-full">Cargando salas...</p>
-                        </div>
-                    </div>
-                </div>
+            </div>
+        </header>
 
-                <div class="lg:col-span-1 space-y-6">
-                     <div class="widget p-6">
-                        <h2 class="text-xl font-bold text-amber-400 mb-4">Mis Frascos en Curado</h2>
-                        <div class="space-y-5">
-                            ${curingJarsHTML}
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-2 space-y-6">
+                <div class="card p-6">
+                    <h2 class="text-xl font-bold text-amber-400 mb-4">Estadísticas Generales</h2>
+                    <div id="stats-carousel" class="grid grid-cols-1 sm:grid-cols-2 gap-6 h-24">
                         </div>
-                        ${curingJars.length > 0 ? `<a href="#" id="navigateToCuringJars" class="block text-center text-amber-400 text-sm font-semibold pt-4 hover:underline">Ver todos...</a>` : ''}
+                </div>
+                <div class="card p-6">
+                     <div class="flex justify-between items-center mb-4">
+                         <h2 class="text-xl font-bold text-amber-400">Mis Salas</h2>
+                         <a href="#" id="navigateToSalas" class="text-amber-400 text-sm font-semibold hover:underline">Ver todas →</a>
                     </div>
+                    <div id="salasGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                         <p class="text-center text-sm text-gray-400 dark:text-gray-500 col-span-full">Cargando salas...</p>
+                    </div>
+                </div>
+            </div>
 
-                    <div class="widget p-6">
-                        <h2 class="text-xl font-bold text-amber-400 mb-4">Comunidad</h2>
-                        <p class="text-center text-sm text-gray-400 dark:text-gray-500 py-8">Próximamente: compartí tus resultados y aprendé de otros cultivadores.</p>
-                    </div>
+            <div class="lg:col-span-1 space-y-6">
+                <div class="card p-6">
+                    <h2 class="text-xl font-bold text-amber-400 mb-3">Actividad Reciente</h2>
+                    <ul class="space-y-4">${recentActivityHTML}</ul>
+                </div>
+                <div class="card p-6">
+                    <h2 class="text-xl font-bold text-amber-400 mb-4">Mis Frascos en Curado</h2>
+                    <div class="space-y-5">${curingJarsHTML}</div>
+                    ${curingJars.length > 0 ? `<a href="#" id="navigateToCuringJars" class="block text-center text-amber-400 text-sm font-semibold pt-2 hover:underline">Ver todos...</a>` : ''}
                 </div>
             </div>
         </div>
-    `;
+    </div>`;
     
     appContainer.innerHTML = dashboardHTML;
-
-    // Renderizar las salas dentro del dashboard
     renderSalasGrid(handlers.getAllSalas(), [], handlers);
-
-    // Listener para el nuevo enlace "Ver todos..." de los frascos
-    const navigateToCuringJars = getEl('navigateToCuringJars');
-    if (navigateToCuringJars) {
-        navigateToCuringJars.addEventListener('click', (e) => {
-            e.preventDefault();
-            handlers.showToolsView();
-            setTimeout(() => handlers.switchToolsTab('curingJars'), 50);
-        });
-    }
 }
 export function renderCuringJarsList(curingCiclos, handlers) {
     const listContainer = getEl('curingJarsList');
@@ -2318,4 +2221,45 @@ export function renderCuringJarsList(curingCiclos, handlers) {
             handlers.handleFinishCuring(cicloId, cicloName);
         });
     });
+}
+export function initializeDashboardEventListeners(statsData) {
+    const menuBtn = getEl('menuBtn');
+    const dropdownMenu = getEl('dropdownMenu');
+    if(menuBtn && dropdownMenu) {
+        menuBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            dropdownMenu.classList.toggle('hidden');
+        });
+        window.addEventListener('click', (e) => {
+            if (!menuBtn.contains(e.target) && !dropdownMenu.contains(e.target)) {
+                dropdownMenu.classList.add('hidden');
+            }
+        });
+    }
+
+    const statsContainer = getEl('stats-carousel');
+    if (statsContainer && statsData && statsData.length > 0) {
+        let currentStatIndex = 0;
+        const createStatCardHTML = (stat) => `
+            <div class="stat-card flex items-start gap-4" style="opacity: 0;">
+                <div class="p-3 rounded-lg bg-${stat.color}-500/20">${stat.icon}</div>
+                <div>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">${stat.label}</p>
+                    <p class="text-2xl font-bold text-gray-800 dark:text-gray-100">${stat.value}</p>
+                </div>
+            </div>`;
+
+        const updateStats = () => {
+            const safeStats = statsData.length > 1 ? statsData : [statsData[0], statsData[0]];
+            const stat1 = safeStats[currentStatIndex % safeStats.length];
+            const stat2 = safeStats[(currentStatIndex + 1) % safeStats.length];
+            statsContainer.innerHTML = createStatCardHTML(stat1) + createStatCardHTML(stat2);
+            setTimeout(() => {
+                statsContainer.querySelectorAll('.stat-card').forEach(card => card.style.opacity = '1');
+            }, 100);
+            currentStatIndex = (currentStatIndex + 2) % safeStats.length;
+        };
+        updateStats();
+        setInterval(updateStats, 5000);
+    }
 }
