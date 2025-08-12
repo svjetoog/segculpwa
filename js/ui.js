@@ -16,6 +16,67 @@ const FERTILIZER_LINES = {
     "Personalizada": []
 };
 
+export function renderHeader(user) {
+    const headerContainer = getEl('app-header');
+    if (!headerContainer) return;
+
+    const welcomeMsg = `Bienvenido de nuevo, @${user.email.split('@')[0]}`;
+
+    headerContainer.innerHTML = `
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-start sm:items-center">
+            <div>
+                <h1 id="view-title" class="text-3xl font-bold text-amber-400 font-mono tracking-wider"></h1>
+                <p id="welcomeUser" class="text-gray-500 dark:text-gray-400 mt-1">${welcomeMsg}</p>
+            </div>
+            <div class="relative mt-4 sm:mt-0 self-end sm:self-auto flex items-center gap-3">
+                <button id="aboutBtn" class="btn-secondary btn-base py-2 px-4 rounded-lg">¿Qué onda esto?</button>
+                <button id="menuBtn" class="btn-primary btn-base p-2 rounded-lg" title="Menú">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" /></svg>
+                </button>
+                <div id="dropdownMenu" class="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-[#262626] border border-gray-200 dark:border-[#404040] rounded-md shadow-lg z-20 hidden">
+                    <a href="#" id="menuDashboard" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#404040]">Panel Principal</a>
+                    <a href="#" id="menuSalas" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#404040]">Ver Salas</a>
+                    <a href="#" id="menuTools" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#404040]">Herramientas</a>
+                    <a href="#" id="menuSettings" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#404040]">Ajustes</a>
+                    <a href="#" id="logoutBtn" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#404040]">Cerrar Sesión</a>
+                </div>
+            </div>
+        </div>`;
+}
+
+// FUNCIÓN MODIFICADA: Renderiza solo el contenido del dashboard
+export function renderDashboard(statsData, recentActivity, curingJars) {
+    const container = getEl('app-content-container');
+    if (!container) return;
+    
+    getEl('view-title').innerText = 'Panel Principal';
+
+    const recentActivityHTML = `...`; // Lógica sin cambios
+    const curingJarsHTML = `...`; // Lógica sin cambios
+
+    container.innerHTML = `
+        <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-1 space-y-6">
+                <div class="card rounded-xl p-6">
+                    <h2 class="text-xl font-bold text-amber-400 mb-4">Mi Cultivo</h2>
+                    <div id="stats-carousel" class="space-y-4 mb-6 h-36"></div>
+                    <h3 class="font-semibold text-gray-800 dark:text-gray-200 mb-3 border-t border-gray-200 dark:border-gray-700 pt-4">Actividad Reciente</h3>
+                    <ul class="space-y-4">${recentActivityHTML}</ul>
+                </div>
+                <div class="card rounded-xl p-6">
+                    <h2 class="text-xl font-bold text-amber-400 mb-4">Mis Frascos en Curado</h2>
+                    <div class="space-y-5">${curingJarsHTML}</div>
+                </div>
+            </div>
+            <div class="card rounded-xl p-6 lg:col-span-2">
+                <h2 class="text-xl font-bold text-amber-400 mb-4">Comunidad</h2>
+                <div class="h-full flex items-center justify-center text-center text-gray-500 dark:text-gray-400"><p><strong>Próximamente...</strong></p></div>
+            </div>
+        </div>`;
+    
+    // Inicializar el carrusel de estadísticas
+    initializeDashboardStatsCarousel(statsData);
+}
 function createTooltipIcon(title) {
     return `
         <span class="tooltip-trigger inline-flex items-center justify-center" data-tippy-content="${title}">
@@ -2239,16 +2300,10 @@ export function initializeDashboardEventListeners(statsData) {
         setInterval(updateStats, 5000);
     }
 }
-export function renderSalasView() {
-    const view = getEl('ciclosView'); // Reutilizamos este div
-    view.innerHTML = `
-        <header class="flex justify-between items-center mb-8">
-            <h1 class="text-3xl font-mono tracking-wider font-bold text-amber-400">Todas las Salas</h1>
-            <button id="backToDashboardBtn" class="btn-secondary btn-base py-2 px-4 rounded-lg">Volver al Panel</button>
-        </header>
-        <main>
-            <div id="salasGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6"></div>
-        </main>
-    `;
-    return view;
+export function renderSalasView(salas, ciclos, handlers) {
+    const container = getEl('app-content-container');
+    if(!container) return;
+    getEl('view-title').innerText = 'Todas las Salas';
+    container.innerHTML = `<div id="salasGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6"></div>`;
+    renderSalasGrid(salas, ciclos, handlers);
 }

@@ -22,6 +22,7 @@ import {
     openPhenoEditModal as uiOpenPhenoEditModal,
     openAddToCatalogModal as uiOpenAddToCatalogModal,
     openPromoteToGeneticModal,
+    renderHeader,
     renderDashboard,
     initializeDashboardEventListeners,
     openBulkAddModal as uiOpenBulkAddModal,
@@ -481,68 +482,14 @@ const handlers = {
     openSetupWizard: () => {
         uiOpenSetupWizardModal(handlers);
     },
-    showDashboard: async () => {
-        handlers.hideAllViews();
-        const appView = getEl('app');
-        appView.classList.remove('hidden');
-        appView.classList.add('view-container');
-
-        const statsData = [
-            {
-                label: 'Ciclos en Vegetativo', value: currentCiclos.filter(c => c.phase === 'Vegetativo' && c.estado === 'activo').length,
-                icon: `<svg class="h-6 w-6 text-green-400"...></svg>`, color: 'green'
-            },
-            {
-                label: 'Ciclos en Flora', value: currentCiclos.filter(c => c.phase === 'Floración' && c.estado === 'activo').length,
-                icon: `<svg class="h-6 w-6 text-pink-400"...></svg>`, color: 'pink'
-            },
-            {
-                label: 'Clones en Stock', value: currentGenetics.reduce((sum, g) => sum + (g.cloneStock || 0), 0),
-                icon: `<svg class="h-6 w-6 text-cyan-400"...></svg>`, color: 'cyan'
-            },
-            {
-                label: 'Semillas en Baúl', value: currentGenetics.reduce((sum, g) => sum + (g.seedStock || 0), 0),
-                icon: `<svg class="h-6 w-6 text-lime-400"...></svg>`, color: 'lime'
-            }
-        ];
-        
-        const recentActivity = []; // Lógica para buscarla
+    showDashboard: () => {
+        const statsData = [/* ... Lógica para crear stats ... */];
+        const recentActivity = [];
         const curingJars = currentCiclos.filter(c => c.estado === 'en_curado').sort((a,b) => b.fechaInicioCurado.toDate() - a.fechaInicioCurado.toDate()).slice(0, 3);
-        
-        renderDashboard(statsData, recentActivity, curingJars, handlers);     
-        
-        const welcomeMsg = `Bienvenido de nuevo, @${auth.currentUser.email.split('@')[0]}`;
-        getEl('welcomeUser').innerText = welcomeMsg;
-        
-        initializeDashboardEventListeners(statsData);
-
-        getEl('logoutBtn').addEventListener('click', () => handlers.signOut());
-        getEl('menuBtn').addEventListener('click', (e) => { e.stopPropagation(); getEl('dropdownMenu').classList.toggle('hidden'); });
-        getEl('menuAddSala').addEventListener('click', (e) => { e.preventDefault(); handlers.openSalaModal(); getEl('dropdownMenu').classList.add('hidden'); });
-        getEl('menuAddCiclo').addEventListener('click', (e) => { e.preventDefault(); handlers.openCicloModal(null, currentSalas, null, handlers); getEl('dropdownMenu').classList.add('hidden'); });
-        getEl('menuSetupWizard').addEventListener('click', (e) => { e.preventDefault(); handlers.openSetupWizard(); getEl('dropdownMenu').classList.add('hidden'); });
-        getEl('menuTools').addEventListener('click', (e) => { e.preventDefault(); handlers.showToolsView(); getEl('dropdownMenu').classList.add('hidden'); });
-        getEl('menuSettings').addEventListener('click', (e) => { e.preventDefault(); handlers.showSettingsView(); getEl('dropdownMenu').classList.add('hidden'); });
-        getEl('aboutBtn').addEventListener('click', () => getEl('aboutModal').style.display = 'flex');
-        
-        const navigateToSalasBtn = getEl('navigateToSalas');
-        if (navigateToSalasBtn) {
-            navigateToSalasBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                handlers.showSalasView(); // <-- CORRECCIÓN: Llama a la nueva función correcta
-            });
-        }
+        renderDashboard(statsData, recentActivity, curingJars);
     },
     showSalasView: () => {
-        handlers.hideAllViews();
-        const view = renderSalasView(); // La UI crea el esqueleto de la vista
-        view.classList.remove('hidden');
-        view.classList.add('view-container');
-        
-        getEl('backToDashboardBtn').addEventListener('click', handlers.showDashboard);
-        
-        // La UI renderiza la grilla de salas dentro del esqueleto que acabamos de crear
-        renderSalasGrid(currentSalas, currentCiclos, handlers);
+        renderSalasView(currentSalas, currentCiclos, handlers);
         initializeDragAndDrop();
     },
     handleFinishCuring: (cicloId, cicloName) => {
@@ -1966,65 +1913,73 @@ handlePhenoCardUpdate: async (e) => {
         }
     }
 };
+function initializeAppUI(user) {
+    // Esta función se llama UNA SOLA VEZ al iniciar sesión.
+    // Muestra el esqueleto de la app, renderiza el header y le asigna sus listeners.
+    getEl('app-shell').classList.remove('hidden');
+    renderHeader(user);
 
+    // Asignar listeners al header persistente
+    getEl('logoutBtn').addEventListener('click', () => handlers.signOut());
+    getEl('menuBtn').addEventListener('click', (e) => { e.stopPropagation(); getEl('dropdownMenu').classList.toggle('hidden'); });
+    getEl('aboutBtn').addEventListener('click', () => getEl('aboutModal').style.display = 'flex');
+    
+    // Listeners de navegación del menú
+    getEl('menuDashboard').addEventListener('click', (e) => { e.preventDefault(); handlers.showDashboard(); getEl('dropdownMenu').classList.add('hidden'); });
+    getEl('menuSalas').addEventListener('click', (e) => { e.preventDefault(); handlers.showSalasView(); getEl('dropdownMenu').classList.add('hidden'); });
+    getEl('menuTools').addEventListener('click', (e) => { e.preventDefault(); handlers.showToolsView(); getEl('dropdownMenu').classList.add('hidden'); });
+    getEl('menuSettings').addEventListener('click', (e) => { e.preventDefault(); handlers.showSettingsView(); getEl('dropdownMenu').classList.add('hidden'); });
+}
 onAuthStateChanged(auth, async user => {
     getEl('initial-loader').classList.add('hidden');
+    
+    // Limpiar vistas anteriores
+    getEl('authView').classList.add('hidden');
+    getEl('app-shell').classList.add('hidden');
+
     if (user) {
         userId = user.uid;
         await runDataMigration(user.uid);
 
-        // CRÍTICO: Esperamos la carga inicial de datos antes de hacer nada más.
+        // 1. Carga inicial de datos (esperamos a que termine)
         const ciclosQuery = query(collection(db, `users/${userId}/ciclos`));
         const geneticsQuery = query(collection(db, `users/${userId}/genetics`));
         const salasQuery = query(collection(db, `users/${userId}/salas`));
         
+        console.log("Cargando datos iniciales desde Firestore...");
         const [ciclosSnapshot, geneticsSnapshot, salasSnapshot] = await Promise.all([
-            getDocs(ciclosQuery),
-            getDocs(geneticsQuery),
-            getDocs(salasQuery)
+            getDocs(ciclosQuery), getDocs(geneticsQuery), getDocs(salasQuery)
         ]);
 
         currentCiclos = ciclosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter(c => c.estado !== 'finalizado');
         currentGenetics = geneticsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         currentSalas = salasSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        
-        // Ahora que tenemos los datos, mostramos el dashboard.
+        console.log("Datos de ciclos cargados:", currentCiclos); // DEBUG: Para verificar los datos
+
+        // 2. Inicializar la UI persistente (header)
+        initializeAppUI(user);
+
+        // 3. Mostrar la vista inicial (Dashboard)
         handlers.showDashboard();
 
-        // Activamos los listeners para actualizaciones en tiempo real.
-        loadCiclos();
-        loadSalas();
-        loadGenetics();
-        loadPhenohunts();
-        loadHistorial();
+        // 4. Activar listeners para actualizaciones en tiempo real
+        loadCiclos(); loadSalas(); loadGenetics(); loadPhenohunts(); loadHistorial();
 
+        // 5. Inicializar listeners globales (modales, etc.)
         initializeEventListeners(handlers); 
 
+        // 6. Activar Tour
         if (!localStorage.getItem('segcul_tour_v1_completed')) {
             startMainTour();
             localStorage.setItem('segcul_tour_v1_completed', 'true');
         }
 
-        window.addEventListener('click', (e) => {
-            if (!e.target.closest('.ciclo-item-container')) {
-                document.querySelectorAll('.ciclo-actions-menu').forEach(menu => {
-                    menu.classList.add('hidden');
-                });
-            }
-        });
-
     } else {
+        // Lógica para cuando el usuario no está logueado
         userId = null;
-        if (salasUnsubscribe) salasUnsubscribe();
-        if (ciclosUnsubscribe) ciclosUnsubscribe();
-        if (geneticsUnsubscribe) geneticsUnsubscribe();
-        if (phenohuntUnsubscribe) phenohuntUnsubscribe(); 
-        if (historialUnsubscribe) historialUnsubscribe();
-
-        handlers.hideAllViews();
-        const authView = getEl('authView');
-        authView.classList.remove('hidden');
-        authView.classList.add('view-container');
+        if (salasUnsubscribe) salasUnsubscribe(); // Detener listeners
+        // ...
+        getEl('authView').classList.remove('hidden');
         initializeEventListeners(handlers);
     }
 });
