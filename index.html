@@ -321,7 +321,43 @@
     </div>
 
     <div id="authView" class="min-h-screen flex items-center justify-center p-4 hidden">
+        <div class="w-full max-w-md">
+            <h1 class="text-4xl font-bold text-center text-amber-400 mb-8 font-mono">SegCul</h1>
+
+            <form id="loginForm" class="p-8 rounded-lg shadow-lg space-y-6">
+                <h2 class="text-2xl font-bold text-center text-gray-800 dark:text-gray-200">Iniciar Sesión</h2>
+                <div>
+                    <label for="login-email" class="sr-only">Email</label>
+                    <input type="email" id="login-email" placeholder="Email" required class="w-full p-3 rounded-md">
+                </div>
+                <div>
+                    <label for="login-password" class="sr-only">Contraseña</label>
+                    <input type="password" id="login-password" placeholder="Contraseña" required class="w-full p-3 rounded-md">
+                </div>
+                <div id="authError" class="p-3 bg-red-200 text-red-800 rounded-md text-center hidden"></div>
+                <button type="submit" class="w-full btn-primary btn-base py-3 rounded-lg font-semibold text-lg">Entrar</button>
+                <p class="text-center text-sm text-gray-600 dark:text-gray-400">
+                    ¿No tienes cuenta? <a href="#" id="showRegister" class="font-semibold text-amber-500 hover:underline">Regístrate</a>
+                </p>
+            </form>
+
+            <form id="registerForm" class="p-8 rounded-lg shadow-lg space-y-6 hidden">
+                <h2 class="text-2xl font-bold text-center text-gray-800 dark:text-gray-200">Crear Cuenta</h2>
+                <div>
+                    <label for="register-email" class="sr-only">Email</label>
+                    <input type="email" id="register-email" placeholder="Email" required class="w-full p-3 rounded-md">
+                </div>
+                <div>
+                    <label for="register-password" class="sr-only">Contraseña</label>
+                    <input type="password" id="register-password" placeholder="Contraseña (mín. 6 caracteres)" required class="w-full p-3 rounded-md">
+                </div>
+                <button type="submit" class="w-full btn-primary btn-base py-3 rounded-lg font-semibold text-lg">Registrarse</button>
+                <p class="text-center text-sm text-gray-600 dark:text-gray-400">
+                    ¿Ya tienes cuenta? <a href="#" id="showLogin" class="font-semibold text-amber-500 hover:underline">Inicia sesión</a>
+                </p>
+            </form>
         </div>
+    </div>
 
     <div id="app-shell" class="hidden">
         <header id="app-header" class="p-4 sm:p-6 lg:p-8">
