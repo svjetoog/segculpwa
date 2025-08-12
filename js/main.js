@@ -1307,20 +1307,13 @@ handlePhenoCardUpdate: async (e) => {
     },
     showToolsView: () => {
         handlers.hideAllViews();
-        const toolsView = getEl('toolsView');
-        toolsView.innerHTML = renderToolsView();
-        toolsView.classList.remove('hidden');
-        toolsView.classList.add('view-container');
+        const container = getEl('app-content-container');
+        if(!container) return;
 
-        handlers.switchToolsTab('genetics');
-        handlers.handleViewModeToggle(toolsViewMode, true);
+        getEl('view-title').innerText = 'Herramientas';
+        container.innerHTML = renderToolsView(); // renderToolsView solo devuelve el HTML
         
-        startToolsTour();
-
-        getEl('backToPanelBtn').addEventListener('click', () => {
-            destroyToolSortables();
-            handlers.hideToolsView();
-        });
+        // Re-asignar listeners específicos de la vista de Herramientas
         getEl('add-bulk-btn').addEventListener('click', handlers.openBulkAddModal);
         getEl('add-to-catalog-btn').addEventListener('click', handlers.openAddToCatalogModal);
         getEl('geneticsTabBtn').addEventListener('click', () => handlers.switchToolsTab('genetics'));
@@ -1333,6 +1326,10 @@ handlePhenoCardUpdate: async (e) => {
         getEl('view-mode-card').addEventListener('click', () => handlers.handleViewModeToggle('card'));
         getEl('view-mode-list').addEventListener('click', () => handlers.handleViewModeToggle('list'));
         getEl('exportCsvBtn').addEventListener('click', handlers.handleExportCSV);
+
+        // Cargar la pestaña por defecto
+        handlers.switchToolsTab('genetics');
+        handlers.handleViewModeToggle(toolsViewMode, true);
     },
     hideToolsView: () => {
         const view = getEl('toolsView');
@@ -1342,12 +1339,13 @@ handlePhenoCardUpdate: async (e) => {
     },
     showSettingsView: () => {
         handlers.hideAllViews();
-        const settingsView = getEl('settingsView');
-        settingsView.innerHTML = renderSettingsView();
-        settingsView.classList.remove('hidden');
-        settingsView.classList.add('view-container');
+        const container = getEl('app-content-container');
+        if(!container) return;
 
-        getEl('backToPanelFromSettingsBtn').addEventListener('click', handlers.hideSettingsView);
+        getEl('view-title').innerText = 'Ajustes';
+        container.innerHTML = renderSettingsView();
+
+        // Re-asignar listeners específicos de la vista de Ajustes
         getEl('changePasswordForm').addEventListener('submit', handlers.handleChangePassword);
         getEl('deleteAccountBtn').addEventListener('click', handlers.handleDeleteAccount);
         handlers.initializeTheme();
