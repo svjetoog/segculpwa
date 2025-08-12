@@ -2049,29 +2049,40 @@ onAuthStateChanged(auth, async user => {
     if (user) {
         userId = user.uid;
         await runDataMigration(user.uid);
+
+        // --- Carga Inicial de Datos Esenciales ---
+        // Usamos getDocs para esperar la primera carga de datos antes de renderizar.
+        const ciclosQuery = query(collection(db, `users/${userId}/ciclos`));
+        const geneticsQuery = query(collection(db, `users/${userId}/genetics`));
         
-        // Carga inicial de todos los datos en memoria
-        loadGenetics();
+        const [ciclosSnapshot, geneticsSnapshot] = await Promise.all([
+            getDocs(ciclosQuery),
+            getDocs(geneticsQuery)
+        ]);
+
+        currentCiclos = ciclosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter(c => c.estado !== 'finalizado');
+        currentGenetics = geneticsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        // --- Renderizado Inicial del Dashboard ---
+        // Ahora que tenemos los datos, el dashboard se mostrará con la información correcta.
+        handlers.showDashboard();
+
+        // --- Activación de Listeners en Tiempo Real ---
+        // Después de la carga inicial, activamos onSnapshot para recibir actualizaciones en vivo.
+        loadSalas();
+        loadCiclos();
+        loadGenetics(); // Se vuelve a llamar para que el listener en vivo se active
         loadPhenohunts();
         loadHistorial();
-        loadCiclos();
-        loadSalas();
 
-        // Pequeño delay para dar tiempo a que los datos iniciales carguen antes de mostrar el dashboard.
-        setTimeout(() => {
-            handlers.showDashboard();
-            const welcomeMsg = `Bienvenido de nuevo, @${user.email.split('@')[0]}`;
-            getEl('welcomeUser').innerText = welcomeMsg;
+        // Inicializa listeners globales de modales, etc.
+        initializeEventListeners(handlers); 
 
-            // Reactivamos el tour de Shepherd para nuevos usuarios
-            if (!localStorage.getItem('segcul_tour_v1_completed')) {
-                startMainTour();
-                localStorage.setItem('segcul_tour_v1_completed', 'true');
-            }
-
-        }, 250);
-
-        initializeEventListeners(handlers); // Inicializa listeners globales de modales, etc.
+        // Activa el tour de bienvenida para nuevos usuarios
+        if (!localStorage.getItem('segcul_tour_v1_completed')) {
+            startMainTour();
+            localStorage.setItem('segcul_tour_v1_completed', 'true');
+        }
 
         // Listener global para cerrar menús contextuales
         window.addEventListener('click', (e) => {
@@ -2097,6 +2108,7 @@ onAuthStateChanged(auth, async user => {
         initializeEventListeners(handlers);
     }
 });
+
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/service-worker.js')
