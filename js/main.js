@@ -579,6 +579,8 @@ const handlers = {
         // Ahora pasamos `handlers` para que la UI pueda renderizar las salas correctamente.
         renderDashboard(statsData, recentActivity, curingJars, handlers);     
         initializeDashboardEventListeners(statsData);
+        const welcomeMsg = `Bienvenido de nuevo, @${auth.currentUser.email.split('@')[0]}`;
+        getEl('welcomeUser').innerText = welcomeMsg;
         // 4. Re-asignar listeners a los botones del nuevo header
         // Este código ahora funcionará porque `renderDashboard` ya creó los botones.
         getEl('logoutBtn').addEventListener('click', () => handlers.signOut());
@@ -601,7 +603,7 @@ const handlers = {
         if (navigateToSalasBtn) {
             navigateToSalasBtn.addEventListener('click', (e) => {
                 e.preventDefault();
-                handlers.showCiclosView(null, null); // Deberá llevar a la vista de todas las salas
+                handlers.showCiclosView(null, null); // Esta llamada ahora funcionará
             });
         }
     },
@@ -1296,27 +1298,54 @@ handlePhenoCardUpdate: async (e) => {
         });
     },
     showCiclosView: (salaId, salaName) => {
+        // CORRECCIÓN 2: Lógica para manejar la vista de "Todas las salas"
         currentSalaId = salaId;
         currentSalaName = salaName;
         handlers.hideAllViews();
         const view = getEl('ciclosView');
+        
+        // Preparamos el HTML de la vista de salas (antes estaba estático en index.html)
+        view.innerHTML = `
+            <header class="flex justify-between items-center mb-8">
+                <h1 id="salaNameHeader" class="text-3xl font-mono tracking-wider font-bold text-amber-400"></h1>
+                <button id="backToDashboardBtn" class="btn-secondary btn-base py-2 px-4 rounded-lg">Volver al Panel</button>
+            </header>
+            <main>
+                <div id="ciclosGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+                <div id="emptyCiclosState" class="text-center py-10 text-gray-500 dark:text-gray-400 hidden">
+                    <p>No hay ciclos en esta sala.</p>
+                </div>
+            </main>
+        `;
         view.classList.remove('hidden');
         view.classList.add('view-container');
 
-        getEl('backToSalasBtn').addEventListener('click', handlers.hideCiclosView);
+        getEl('backToDashboardBtn').addEventListener('click', handlers.showDashboard);
 
-        getEl('salaNameHeader').innerText = `Sala: ${salaName}`;
         const ciclosGrid = getEl('ciclosGrid');
-        ciclosGrid.innerHTML = '';
-        const ciclosInSala = currentCiclos.filter(c => c.salaId === salaId);
+        const emptyState = getEl('emptyCiclosState');
+        const header = getEl('salaNameHeader');
+        let ciclosToRender;
 
-        if (ciclosInSala.length > 0) {
-            getEl('emptyCiclosState').classList.add('hidden');
-            ciclosInSala.forEach(ciclo => {
+        if (salaId) {
+            // Caso: Vista de una sala específica
+            header.innerText = `Sala: ${salaName}`;
+            ciclosToRender = currentCiclos.filter(c => c.salaId === salaId);
+        } else {
+            // Caso: Vista de "Todas las salas"
+            header.innerText = 'Todas las Salas';
+            ciclosToRender = currentCiclos; // Renderizamos todos los ciclos activos
+        }
+        
+        ciclosGrid.innerHTML = '';
+        if (ciclosToRender.length > 0) {
+            emptyState.classList.add('hidden');
+            ciclosToRender.forEach(ciclo => {
                 ciclosGrid.appendChild(createCicloCard(ciclo, handlers));
             });
         } else {
-            getEl('emptyCiclosState').classList.remove('hidden');
+            emptyState.classList.remove('hidden');
+            emptyState.querySelector('p').innerText = salaId ? 'No hay ciclos en esta sala.' : 'No tienes ciclos activos.';
         }
     },
     hideCiclosView: () => {

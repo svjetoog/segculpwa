@@ -2144,25 +2144,23 @@ export function renderDashboard(stats, recentActivity, curingJars, handlers) {
         </header>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            
             <div class="lg:col-span-1 space-y-6">
-                <div class="card p-6">
+                <div class="card rounded-xl p-6">
                     <h2 class="text-xl font-bold text-amber-400 mb-1">Mi Cultivo</h2>
                     <a href="#" id="navigateToSalas" class="text-sm text-amber-400 hover:underline mb-4 block">Ver todas las salas →</a>
-                    <div id="stats-carousel" class="space-y-4 mb-6">
+                    <div id="stats-carousel" class="space-y-4 mb-6 h-36">
                         </div>
                     <h3 class="font-semibold text-gray-800 dark:text-gray-200 mb-3 border-t border-gray-200 dark:border-gray-700 pt-4">Actividad Reciente</h3>
                     <ul class="space-y-4">${recentActivityHTML}</ul>
                 </div>
-
-                <div class="card p-6">
+                <div class="card rounded-xl p-6">
                     <h2 class="text-xl font-bold text-amber-400 mb-4">Mis Frascos en Curado</h2>
                     <div class="space-y-5">${curingJarsHTML}</div>
                     ${curingJars.length > 0 ? `<a href="#" id="navigateToCuringJars" class="block text-center text-amber-400 text-sm font-semibold pt-2 hover:underline">Ver todos...</a>` : ''}
                 </div>
             </div>
 
-            <div class="card p-6 lg:col-span-2">
+            <div class="card rounded-xl p-6 lg:col-span-2">
                 <h2 class="text-xl font-bold text-amber-400 mb-4">Comunidad</h2>
                 <div class="h-full flex items-center justify-center text-center text-gray-500 dark:text-gray-400">
                     <p><strong>Próximamente:</strong> Un espacio para compartir tus cosechas y aprender de otros cultivadores.</p>
