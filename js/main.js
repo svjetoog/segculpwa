@@ -1988,6 +1988,7 @@ function initializeAppUI(user) {
     getEl('menuSettings').addEventListener('click', (e) => { e.preventDefault(); handlers.showSettingsView(); getEl('dropdownMenu').classList.add('hidden'); });
 }
 onAuthStateChanged(auth, async user => {
+    console.log("Checkpoint 1: onAuthStateChanged se ha disparado.");
     getEl('initial-loader').classList.add('hidden');
     
     // Limpiar vistas anteriores
@@ -1995,10 +1996,14 @@ onAuthStateChanged(auth, async user => {
     getEl('app-shell').classList.add('hidden');
 
     if (user) {
+        console.log("Checkpoint 2: Usuario detectado. Entrando al bloque 'if (user)'.");
+        
         userId = user.uid;
         await runDataMigration(user.uid);
 
         // 1. Carga inicial de datos (esperamos a que termine)
+        console.log("Checkpoint 3: Iniciando carga de datos desde Firestore...");
+        
         const ciclosQuery = query(collection(db, `users/${userId}/ciclos`));
         const geneticsQuery = query(collection(db, `users/${userId}/genetics`));
         const salasQuery = query(collection(db, `users/${userId}/salas`));
@@ -2007,7 +2012,7 @@ onAuthStateChanged(auth, async user => {
         const [ciclosSnapshot, geneticsSnapshot, salasSnapshot] = await Promise.all([
             getDocs(ciclosQuery), getDocs(geneticsQuery), getDocs(salasQuery)
         ]);
-
+        console.log("Checkpoint 4: Carga de datos completada.");
         currentCiclos = ciclosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter(c => c.estado !== 'finalizado');
         currentGenetics = geneticsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         currentSalas = salasSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -2015,9 +2020,10 @@ onAuthStateChanged(auth, async user => {
 
         // 2. Inicializar la UI persistente (header)
         initializeAppUI(user);
-
+        console.log("Checkpoint 5: UI del cascarón de la app inicializada.")
         // 3. Mostrar la vista inicial (Dashboard)
         handlers.showDashboard();
+        console.log("Checkpoint 6: Dashboard renderizado.");
 
         // 4. Activar listeners para actualizaciones en tiempo real
         loadCiclos(); loadSalas(); loadGenetics(); loadPhenohunts(); loadHistorial();
@@ -2030,9 +2036,11 @@ onAuthStateChanged(auth, async user => {
             startMainTour();
             localStorage.setItem('segcul_tour_v1_completed', 'true');
         }
-
+        console.log("Checkpoint 7: ¡Inicialización completa!");
     } else {
         // Lógica para cuando el usuario no está logueado
+        console.log("Checkpoint 8: No se detectó usuario. Mostrando vista de autenticación.");
+        
         userId = null;
         if (salasUnsubscribe) salasUnsubscribe(); // Detener listeners
         // ...
