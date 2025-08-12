@@ -1088,15 +1088,17 @@ export function createLogEntry(log, ciclo, handlers) {
 
 export function renderSalasGrid(salas, ciclos, handlers) {
     const salasGrid = getEl('salasGrid');
-    if (!salasGrid) return;
-    getEl('loadingSalas').style.display = 'none';
-    salasGrid.innerHTML = '';
+    if (!salasGrid) return; // Si el contenedor no existe, no hacemos nada.
+
+    salasGrid.innerHTML = ''; // Limpiamos el contenido anterior.
+
     if (salas.length === 0) {
-        getEl('emptySalasState').style.display = 'block';
+        // Si no hay salas, mostramos el mensaje de estado vacío dentro del contenedor.
+        salasGrid.innerHTML = `<p class="text-center text-gray-500 dark:text-gray-400 col-span-full py-8">No tienes salas. ¡Añade una para empezar!</p>`;
         return;
     }
-    getEl('emptySalasState').style.display = 'none';
 
+    // Ordenamos las salas por su posición guardada.
     salas.sort((a, b) => (a.position || 0) - (b.position || 0));
 
     salas.forEach(sala => {
@@ -1196,6 +1198,7 @@ export function renderSalasGrid(salas, ciclos, handlers) {
         `;
         salaCard.querySelector('.flex-grow.relative').appendChild(ciclosPreviewContainer);
 
+        // Los event listeners no cambian
         salaCard.querySelector('[data-action="open-sala"]').addEventListener('click', (e) => {
             handlers.showCiclosView(sala.id, sala.name);
         });
@@ -1209,7 +1212,7 @@ export function renderSalasGrid(salas, ciclos, handlers) {
         });
         salaCard.querySelector('[data-action="quick-add-ciclo"]').addEventListener('click', (e) => {
             e.stopPropagation();
-            handlers.openCicloModal(null, null, e.currentTarget.dataset.salaId, handlers);
+            handlers.openCicloModal(null, salas, e.currentTarget.dataset.salaId, handlers);
         });
         salasGrid.appendChild(salaCard);
     });
