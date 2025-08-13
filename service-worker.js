@@ -1,7 +1,7 @@
 // js/service-worker.js
 
 // Nombre y versión del caché. Cambiar la versión fuerza la actualización del caché.
-const CACHE_NAME = 'segcul-cache-v0.443h';
+const CACHE_NAME = 'segcul-cache-v0.443i';
 
 // Archivos esenciales de la aplicación (el "App Shell") que se guardarán para funcionar offline.
 const urlsToCache = [
