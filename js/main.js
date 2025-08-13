@@ -1,7 +1,7 @@
 // js/main.js
 import { auth, db } from './firebase.js';
 import { onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updatePassword, deleteUser } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { collection, doc, addDoc, deleteDoc, onSnapshot, query, serverTimestamp, getDocs, writeBatch, updateDoc, arrayUnion, where, increment, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { collection, doc, setDoc, addDoc, deleteDoc, onSnapshot, query, serverTimestamp, getDocs, writeBatch, updateDoc, arrayUnion, where, increment, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import {
      getEl, showNotification, renderSalasGrid, createCicloCard, createLogEntry,
     renderGeneticsList, renderStockList,
@@ -485,6 +485,8 @@ const handlers = {
     },
     handleOpenProfileModal: async () => {
     try {
+        console.log('Abriendo modal de perfil...'); // Detective 1
+
         // 1. Obtener la información del perfil desde Firestore
         const userDocRef = doc(db, 'users', userId);
         const userDoc = await getDoc(userDocRef);
@@ -496,11 +498,16 @@ const handlers = {
             profileData.creationTime = user.metadata.creationTime;
         }
 
-        // 3. Calcular los tipos de cultivo activos (sustrato, hidroponia)
+        // 3. Calcular los tipos de cultivo activos (CON LÓGICA MEJORADA)
+        console.log('Ciclos actuales en el estado global:', currentCiclos); // Detective 2
         const activeCiclos = currentCiclos.filter(c => c.estado === 'activo');
+        console.log('Ciclos activos (después de filtrar):', activeCiclos); // Detective 3
+        
         const activeCultivationTypes = [...new Set(
             activeCiclos.map(c => c.cultivationType || 'Sustrato')
         )].filter(Boolean);
+        console.log('Tipos de cultivo calculados:', activeCultivationTypes); // Detective 4
+
         // 4. Llamar a la función de UI para abrir el modal con todos los datos
         openProfileModal(profileData, currentGenetics, activeCultivationTypes, handlers);
 
@@ -508,7 +515,7 @@ const handlers = {
         console.error("Error al abrir el modal de perfil:", error);
         showNotification("No se pudo cargar la información del perfil.", "error");
     }
-    },
+},
     handleProfileFormSubmit: async (e) => {
     e.preventDefault(); // Prevenimos que la página se recargue
 
