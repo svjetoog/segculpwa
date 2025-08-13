@@ -479,7 +479,7 @@ async function runDataMigration(userId) {
 const handlers = {
     handleOpenCuradoModal: () => {
         // Llama a la función de UI que creamos en el paso anterior
-        uiOpenCuradoModal(currentFrascos, handlers);
+        openCuradoModal(currentFrascos, handlers);
     },
     
     handleEliminarFrasco: (frascoId) => {
