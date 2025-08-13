@@ -1652,74 +1652,115 @@ export function openFinalizarCicloModal(ciclo, predefinedTags, maxCustomTags, al
 }
 
 export function initializeEventListeners(handlers) {
-    getEl('loginForm').addEventListener('submit', (e) => {
-        e.preventDefault();
-        handlers.handleLogin(getEl('login-email').value, getEl('login-password').value);
-    });
-    getEl('registerForm').addEventListener('submit', (e) => {
-        e.preventDefault();
-        handlers.handleRegister(getEl('register-email').value, getEl('register-password').value);
-    });
-    getEl('showRegister').addEventListener('click', (e) => {
-        e.preventDefault();
-        getEl('loginForm').classList.add('hidden');
-        getEl('registerForm').classList.remove('hidden');
-        getEl('authError').classList.add('hidden');
-    });
-    getEl('showLogin').addEventListener('click', (e) => {
-        e.preventDefault();
-        getEl('registerForm').classList.add('hidden');
-        getEl('loginForm').classList.remove('hidden');
-        getEl('authError').classList.add('hidden');
-    });
-    getEl('aboutBtnAuth').addEventListener('click', () => getEl('aboutModal').style.display = 'flex');
+    // ---- Listeners para la vista de Autenticación ----
+    const loginForm = getEl('loginForm');
+    if (loginForm) {
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            handlers.handleLogin(getEl('login-email').value, getEl('login-password').value);
+        });
+    }
+
+    const registerForm = getEl('registerForm');
+    if (registerForm) {
+        registerForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            handlers.handleRegister(getEl('register-email').value, getEl('register-password').value);
+        });
+    }
+
+    const showRegisterBtn = getEl('showRegister');
+    if (showRegisterBtn) {
+        showRegisterBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            getEl('loginForm').classList.add('hidden');
+            getEl('registerForm').classList.remove('hidden');
+            getEl('authError').classList.add('hidden');
+        });
+    }
+
+    const showLoginBtn = getEl('showLogin');
+    if (showLoginBtn) {
+        showLoginBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            getEl('registerForm').classList.add('hidden');
+            getEl('loginForm').classList.remove('hidden');
+            getEl('authError').classList.add('hidden');
+        });
+    }
+
+    const aboutBtnAuth = getEl('aboutBtnAuth');
+    if (aboutBtnAuth) aboutBtnAuth.addEventListener('click', () => getEl('aboutModal').style.display = 'flex');
+
+    const aboutBtnAuthRegister = getEl('aboutBtnAuthRegister');
+    if (aboutBtnAuthRegister) aboutBtnAuthRegister.addEventListener('click', () => getEl('aboutModal').style.display = 'flex');
+
+    // ---- Listeners para la App Principal (cuando el usuario está logueado) ----
     const profileBtn = getEl('profileBtn');
-        if (profileBtn) {
+    if (profileBtn) {
         profileBtn.addEventListener('click', (e) => {
             e.preventDefault();
             handlers.handleOpenProfileModal();
         });
     }
-    getEl('aboutBtnAuthRegister').addEventListener('click', () => getEl('aboutModal').style.display = 'flex');
-    getEl('logoutBtn').addEventListener('click', () => handlers.signOut());
-    getEl('menuBtn').addEventListener('click', (e) => {
-        e.stopPropagation();
-        getEl('dropdownMenu').classList.toggle('hidden');
-    });
-    getEl('notificationsBtn').addEventListener('click', (e) => {
-    e.stopPropagation();
-    getEl('dropdownMenu').classList.add('hidden'); // Cierra el otro menú
-    handlers.handleBellClick(); // Llama al nuevo handler
-});
 
-window.addEventListener('click', (e) => {
-    // Cierra el menú principal si se hace clic fuera
+    const logoutBtn = getEl('logoutBtn');
+    if (logoutBtn) logoutBtn.addEventListener('click', () => handlers.signOut());
+
     const menuBtn = getEl('menuBtn');
-    const dropdownMenu = getEl('dropdownMenu');
-    if (menuBtn && dropdownMenu && !menuBtn.contains(e.target) && !dropdownMenu.contains(e.target)) {
-        dropdownMenu.classList.add('hidden');
+    if (menuBtn) {
+        menuBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            getEl('dropdownMenu').classList.toggle('hidden');
+        });
     }
 
-    // Cierra el menú de notificaciones si se hace clic fuera
-    const bellBtn = getEl('notificationsBtn');
-    const notificationsMenu = getEl('notificationsMenu');
-    if (bellBtn && notificationsMenu && !bellBtn.contains(e.target) && !notificationsMenu.contains(e.target)) {
-        notificationsMenu.classList.add('hidden');
+    const notificationsBtn = getEl('notificationsBtn');
+    if (notificationsBtn) {
+        notificationsBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            getEl('dropdownMenu').classList.add('hidden');
+            handlers.handleBellClick();
+        });
     }
-});
-    getEl('aboutBtn').addEventListener('click', () => getEl('aboutModal').style.display = 'flex');
+    
+    const aboutBtn = getEl('aboutBtn');
+    if(aboutBtn) aboutBtn.addEventListener('click', () => getEl('aboutModal').style.display = 'flex');
     
     const menuAddSalaLink = getEl('menuAddSala');
-    menuAddSalaLink.innerHTML = "Añadir Sala " + createTooltipIcon("Una Sala es tu espacio físico de cultivo, como una carpa o un indoor. Dentro de las salas organizarás tus Ciclos.");
-    menuAddSalaLink.addEventListener('click', (e) => { e.preventDefault(); handlers.openSalaModal(); getEl('dropdownMenu').classList.add('hidden'); });
+    if (menuAddSalaLink) {
+        menuAddSalaLink.innerHTML = "Añadir Sala " + createTooltipIcon("Una Sala es tu espacio físico de cultivo, como una carpa o un indoor. Dentro de las salas organizarás tus Ciclos.");
+        menuAddSalaLink.addEventListener('click', (e) => { e.preventDefault(); handlers.openSalaModal(); getEl('dropdownMenu').classList.add('hidden'); });
+    }
     
-    getEl('menuAddCiclo').addEventListener('click', (e) => { e.preventDefault(); handlers.openCicloModal(null, null, null, handlers); getEl('dropdownMenu').classList.add('hidden'); });
-    getEl('menuCurado').textContent = 'Frascos en Curado'; 
-    getEl('menuCurado').addEventListener('click', (e) => { e.preventDefault(); handlers.handleOpenCuradoModal(); getEl('dropdownMenu').classList.add('hidden'); });
-    getEl('menuSetupWizard').addEventListener('click', (e) => { e.preventDefault(); handlers.openSetupWizard(); getEl('dropdownMenu').classList.add('hidden'); });
-    getEl('menuTools').addEventListener('click', (e) => { e.preventDefault(); handlers.showToolsView(); getEl('dropdownMenu').classList.add('hidden'); });
-    getEl('menuSettings').addEventListener('click', (e) => { e.preventDefault(); handlers.showSettingsView(); getEl('dropdownMenu').classList.add('hidden'); });
+    const menuAddCiclo = getEl('menuAddCiclo');
+    if (menuAddCiclo) menuAddCiclo.addEventListener('click', (e) => { e.preventDefault(); handlers.openCicloModal(null, null, null, handlers); getEl('dropdownMenu').classList.add('hidden'); });
     
+    const menuCurado = getEl('menuCurado');
+    if (menuCurado) {
+        menuCurado.textContent = 'Frascos en Curado'; 
+        menuCurado.addEventListener('click', (e) => { e.preventDefault(); handlers.handleOpenCuradoModal(); getEl('dropdownMenu').classList.add('hidden'); });
+    }
+    
+    const menuSetupWizard = getEl('menuSetupWizard');
+    if (menuSetupWizard) menuSetupWizard.addEventListener('click', (e) => { e.preventDefault(); handlers.openSetupWizard(); getEl('dropdownMenu').classList.add('hidden'); });
+
+    const menuTools = getEl('menuTools');
+    if (menuTools) menuTools.addEventListener('click', (e) => { e.preventDefault(); handlers.showToolsView(); getEl('dropdownMenu').classList.add('hidden'); });
+    
+    const menuSettings = getEl('menuSettings');
+    if (menuSettings) menuSettings.addEventListener('click', (e) => { e.preventDefault(); handlers.showSettingsView(); getEl('dropdownMenu').classList.add('hidden'); });
+    
+    // ---- Listeners Globales ----
+    window.addEventListener('click', (e) => {
+        if (menuBtn && getEl('dropdownMenu') && !menuBtn.contains(e.target) && !getEl('dropdownMenu').contains(e.target)) {
+            getEl('dropdownMenu').classList.add('hidden');
+        }
+        if (notificationsBtn && getEl('notificationsMenu') && !notificationsBtn.contains(e.target) && !getEl('notificationsMenu').contains(e.target)) {
+            getEl('notificationsMenu').classList.add('hidden');
+        }
+    });
+
     document.body.addEventListener('click', (e) => {
         if (e.target.closest('#cancelSalaBtn')) getEl('salaModal').style.display = 'none';
         if (e.target.closest('#cancelCicloBtn')) getEl('cicloModal').style.display = 'none';
@@ -1740,9 +1781,7 @@ window.addEventListener('click', (e) => {
         if (e.target.id === 'salaForm') handlers.handleSalaFormSubmit(e);
         if (e.target.id === 'cicloForm') handlers.handleCicloFormSubmit(e);
         if (e.target.id === 'logForm') handlers.handleLogFormSubmit(e);
-        if (e.target.id === 'profileForm') {
-        handlers.handleProfileFormSubmit(e);
-    }
+        if (e.target.id === 'profileForm') handlers.handleProfileFormSubmit(e);
         if (e.target.id === 'moveCicloForm') handlers.handleMoveCicloSubmit(e);
         if (e.target.id === 'germinateSeedForm') handlers.handleGerminateFormSubmit(e);
         if (e.target.id === 'seedForm') handlers.handleSeedFormSubmit(e);
@@ -1752,14 +1791,11 @@ window.addEventListener('click', (e) => {
             handlers.handlePhenoCardUpdate(e);
         }
         if (e.target.id === 'finalizarCicloForm') handlers.handleFinalizarCicloFormSubmit(e);
-
-        // --- BLOQUE AÑADIDO ---
         if (e.target.id === 'promoteToGeneticForm') {
             const huntId = getEl('phenohuntDetailView').querySelector('[data-hunt-id]').dataset.huntId;
             e.target.dataset.huntId = huntId;
             handlers.handlePromoteToGenetic(e);
         }
-        // ----------------------
     });
     
     initializeTooltips();
