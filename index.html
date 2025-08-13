@@ -390,6 +390,11 @@
                 <p id="welcomeUser" class="text-gray-500 dark:text-gray-400 mt-1"></p>
             </div>
             <div class="relative mt-4 sm:mt-0 self-end sm:self-auto flex items-center gap-2">
+                <button id="profileBtn" class="btn-secondary btn-base p-2 rounded-lg shadow-md" title="Editar Perfil Público">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+                    </svg>
+                </button>
                 <button id="aboutBtn" class="btn-secondary btn-base py-2 px-4 rounded-lg shadow-md">
                     ¿Qué onda esto?
                 </button>
@@ -485,6 +490,7 @@
     </div>
     <div id="bulkAddModal" class="fixed inset-0 modal-backdrop flex items-center justify-center z-50 p-4 hidden"></div>
     <div id="setupWizardModal" class="fixed inset-0 modal-backdrop flex items-center justify-center z-50 p-4 hidden"></div>
+    <div id="profileModal" class="fixed inset-0 modal-backdrop flex items-center justify-center z-50 p-4 hidden"></div>
     <div id="confirmationModal" class="fixed inset-0 modal-backdrop flex items-center justify-center z-50 p-4 hidden">
         <div class="w-11/12 md:w-full md:max-w-md p-6 rounded-lg shadow-lg">
             <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Confirmar Acción</h2>

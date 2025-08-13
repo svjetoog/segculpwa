@@ -92,7 +92,64 @@ function createModalHTML(id, title, formId, content, submitText, cancelId, submi
         </div>
     `;
 }
+export function openProfileModal(profileData, allGenetics, activeCultivationTypes, handlers) {
+    const modal = getEl('profileModal');
+    if (!modal) return;
 
+    // Preparamos los datos para mostrarlos
+    const username = profileData?.username || '';
+    const memberSince = profileData?.creationTime
+        ? new Date(profileData.creationTime).toLocaleDateString('es-AR', { year: 'numeric', month: 'long' })
+        : 'Fecha desconocida';
+
+    const cultivationTagsHTML = activeCultivationTypes.length > 0
+        ? activeCultivationTypes.map(type => `<span class="tag tag-standard">${type}</span>`).join('')
+        : '<p class="text-sm text-gray-500 dark:text-gray-400">Aún no hay ciclos activos.</p>';
+
+    // Creamos las opciones para el selector de genéticas
+    const geneticsOptionsHTML = allGenetics
+        .map(g => `<option value="${g.id}">${g.name}</option>`)
+        .join('');
+
+    const content = `
+        <div class="space-y-6">
+            <div>
+                <label for="profile-username" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nombre de Usuario</label>
+                <input type="text" id="profile-username" value="${username}" placeholder="Elige un @nombredeusuario" class="w-full p-2 rounded-md font-mono">
+                <p class="text-xs text-gray-400 mt-1">Este será tu nombre en la comunidad. Solo letras, números y guiones bajos.</p>
+            </div>
+
+            <hr class="border-gray-300 dark:border-gray-600">
+
+            <div>
+                <h3 class="text-lg font-medium text-gray-800 dark:text-gray-200 mb-2">Top 3 Genéticas</h3>
+                <div class="space-y-2">
+                    <select id="top-genetic-1" class="w-full p-2 rounded-md top-genetic-select"><option value="">- Seleccionar Genética 1 -</option>${geneticsOptionsHTML}</select>
+                    <select id="top-genetic-2" class="w-full p-2 rounded-md top-genetic-select"><option value="">- Seleccionar Genética 2 -</option>${geneticsOptionsHTML}</select>
+                    <select id="top-genetic-3" class="w-full p-2 rounded-md top-genetic-select"><option value="">- Seleccionar Genética 3 -</option>${geneticsOptionsHTML}</select>
+                </div>
+            </div>
+
+            <hr class="border-gray-300 dark:border-gray-600">
+            
+            <div class="text-center">
+                <p class="text-sm text-gray-500 dark:text-gray-400">Miembro desde: ${memberSince}</p>
+                <div class="mt-2 flex justify-center flex-wrap gap-2">
+                    ${cultivationTagsHTML}
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Reutilizamos la función para crear el marco del modal
+    modal.innerHTML = createModalHTML('profileModalContent', 'Editar Perfil Público', 'profileForm', content, 'Guardar Cambios', 'cancelProfileBtn');
+    
+    // Aquí, más adelante, seleccionaremos las genéticas guardadas
+    // Por ahora, solo lo mostramos
+    modal.style.display = 'flex';
+
+    getEl('cancelProfileBtn').addEventListener('click', () => modal.style.display = 'none');
+}
 export function openSalaModal(sala = null) {
     const title = sala ? 'Editar Sala' : 'Añadir Sala';
     const content = `
@@ -1609,6 +1666,13 @@ export function initializeEventListeners(handlers) {
         getEl('authError').classList.add('hidden');
     });
     getEl('aboutBtnAuth').addEventListener('click', () => getEl('aboutModal').style.display = 'flex');
+    const profileBtn = getEl('profileBtn');
+        if (profileBtn) {
+        profileBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            handlers.handleOpenProfileModal();
+        });
+    }
     getEl('aboutBtnAuthRegister').addEventListener('click', () => getEl('aboutModal').style.display = 'flex');
     getEl('logoutBtn').addEventListener('click', () => handlers.signOut());
     getEl('menuBtn').addEventListener('click', (e) => {

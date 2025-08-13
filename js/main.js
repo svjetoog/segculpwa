@@ -26,7 +26,8 @@ import {
     renderBulkStep2,
     openSetupWizardModal as uiOpenSetupWizardModal,
     renderWizardCicloRow,
-    openCuradoModal
+    openCuradoModal,
+    openProfileModal
 } from './ui.js';
 import { startMainTour, startToolsTour } from './onboarding.js';
 
@@ -482,7 +483,31 @@ const handlers = {
         // Llama a la función de UI que creamos en el paso anterior
         openCuradoModal(currentFrascos, handlers);
     },
-    
+    handleOpenProfileModal: async () => {
+    try {
+        // 1. Obtener la información del perfil desde Firestore
+        const userDocRef = doc(db, 'users', userId);
+        const userDoc = await getDoc(userDocRef);
+        const profileData = userDoc.exists() ? userDoc.data().publicProfile || {} : {};
+
+        // 2. Obtener la fecha de creación de la cuenta desde Firebase Auth
+        const user = auth.currentUser;
+        if (user && user.metadata.creationTime) {
+            profileData.creationTime = user.metadata.creationTime;
+        }
+
+        // 3. Calcular los tipos de cultivo activos (sustrato, hidroponia)
+        const activeCiclos = currentCiclos.filter(c => c.estado === 'activo');
+        const activeCultivationTypes = [...new Set(activeCiclos.map(c => c.cultivationType))];
+
+        // 4. Llamar a la función de UI para abrir el modal con todos los datos
+        openProfileModal(profileData, currentGenetics, activeCultivationTypes, handlers);
+
+    } catch (error) {
+        console.error("Error al abrir el modal de perfil:", error);
+        showNotification("No se pudo cargar la información del perfil.", "error");
+    }
+    },
     handleEliminarFrasco: (frascoId) => {
         handlers.showConfirmationModal('¿Seguro que quieres eliminar este frasco? Esta acción indica que el stock se ha terminado.', async () => {
             try {
