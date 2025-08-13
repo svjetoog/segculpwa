@@ -391,37 +391,47 @@
     </div>
     <div class="relative mt-4 sm:mt-0 self-end sm:self-auto flex items-center gap-2">
         
-        <div class="relative">
-            <button id="notificationsBtn" class="btn-secondary btn-base p-2 rounded-lg shadow-md" title="Notificaciones">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
-                </svg>
-                <span id="notification-indicator" class="hidden absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-gray-800"></span>
-            </button>
-            <div id="notificationsMenu" class="absolute right-0 top-full mt-2 w-80 bg-white dark:bg-[#262626] border border-gray-200 dark:border-[#404040] rounded-md shadow-lg z-20 hidden max-h-80 overflow-y-auto">
-                <div id="notifications-list" class="p-2 space-y-2">
-                    </div>
-                <div id="no-notifications-state" class="p-4 text-center text-sm text-gray-500 dark:text-gray-400 hidden">
-                    No hay notificaciones nuevas.
-                </div>
+    <div class="relative">
+        <button id="notificationsBtn" class="btn-secondary btn-base p-2 rounded-lg shadow-md" title="Notificaciones">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+            </svg>
+            <span id="notification-indicator" class="hidden absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-gray-800"></span>
+        </button>
+        <div id="notificationsMenu" class="absolute right-0 top-full mt-2 w-80 bg-white dark:bg-[#262626] border border-gray-200 dark:border-[#404040] rounded-md shadow-lg z-20 hidden max-h-80 overflow-y-auto">
+            <div id="notifications-list" class="p-2 space-y-2"></div>
+            <div id="no-notifications-state" class="p-4 text-center text-sm text-gray-500 dark:text-gray-400 hidden">
+                No hay notificaciones nuevas.
             </div>
         </div>
+    </div>
 
-        <button id="profileBtn" class="btn-secondary btn-base p-2 rounded-lg shadow-md" title="Editar Perfil Público">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
-            </svg>
-        </button>
-        <button id="aboutBtn" class="btn-secondary btn-base py-2 px-4 rounded-lg shadow-md">
-            ¿Qué onda esto?
-        </button>
+    <button id="profileBtn" class="btn-secondary btn-base p-2 rounded-lg shadow-md" title="Editar Perfil Público">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+        </svg>
+    </button>
+    
+    <button id="aboutBtn" class="btn-secondary btn-base py-2 px-4 rounded-lg shadow-md">
+        ¿Qué onda esto?
+    </button>
+    
+    <div class="relative">
         <button id="menuBtn" class="btn-primary btn-base p-2 rounded-lg shadow-md">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
             </svg>
         </button>
         <div id="dropdownMenu" class="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-[#262626] border border-gray-200 dark:border-[#404040] rounded-md shadow-lg z-20 hidden">
-            </div>
+            <a href="#" id="menuAddSala" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#404040]">Añadir Sala</a>
+            <a href="#" id="menuAddCiclo" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#404040]">Añadir Ciclo</a>
+            <a href="#" id="menuSetupWizard" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#404040]">Configuración Rápida</a>
+            <a href="#" id="menuCurado" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#404040]"></a>
+            <a href="#" id="menuTools" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#404040]">Herramientas</a>
+            <a href="#" id="menuSettings" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#404040]">Ajustes</a>
+            <a href="#" id="logoutBtn" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#404040]">Cerrar Sesión</a>
+        </div>
+    </div>
     </div>
 </header>
         <main>
