@@ -147,7 +147,12 @@ export function openProfileModal(profileData, allGenetics, activeCultivationType
     // --- FIN DEL NUEVO DISEÑO ---
 
     modal.innerHTML = createModalHTML('profileModalContent', 'Perfil Público', 'profileForm', content, 'Guardar Cambios', 'cancelProfileBtn');
-    
+    const topGenetics = profileData?.topGenetics || [];
+if (topGenetics.length > 0) {
+    getEl('top-genetic-1').value = topGenetics[0] || '';
+    getEl('top-genetic-2').value = topGenetics[1] || '';
+    getEl('top-genetic-3').value = topGenetics[2] || '';
+}
     modal.style.display = 'flex';
 
     getEl('cancelProfileBtn').addEventListener('click', () => modal.style.display = 'none');
@@ -1721,6 +1726,9 @@ export function initializeEventListeners(handlers) {
         if (e.target.id === 'salaForm') handlers.handleSalaFormSubmit(e);
         if (e.target.id === 'cicloForm') handlers.handleCicloFormSubmit(e);
         if (e.target.id === 'logForm') handlers.handleLogFormSubmit(e);
+        if (e.target.id === 'profileForm') {
+        handlers.handleProfileFormSubmit(e);
+    }
         if (e.target.id === 'moveCicloForm') handlers.handleMoveCicloSubmit(e);
         if (e.target.id === 'germinateSeedForm') handlers.handleGerminateFormSubmit(e);
         if (e.target.id === 'seedForm') handlers.handleSeedFormSubmit(e);

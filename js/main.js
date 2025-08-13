@@ -509,6 +509,51 @@ const handlers = {
         showNotification("No se pudo cargar la información del perfil.", "error");
     }
     },
+    handleProfileFormSubmit: async (e) => {
+    e.preventDefault(); // Prevenimos que la página se recargue
+
+    // 1. Recolectar datos del formulario del modal
+    const usernameInput = getEl('profile-username');
+    const username = usernameInput.value.trim().toLowerCase();
+
+    const topGenetic1 = getEl('top-genetic-1').value;
+    const topGenetic2 = getEl('top-genetic-2').value;
+    const topGenetic3 = getEl('top-genetic-3').value;
+
+    // 2. Validar el nombre de usuario
+    // Esta expresión regular permite letras, números y guión bajo, de 3 a 15 caracteres.
+    const usernameRegex = /^[a-z0-9_]{3,15}$/;
+    if (username && !usernameRegex.test(username)) {
+        showNotification('El nombre de usuario solo puede contener letras minúsculas, números y guión bajo.', 'error');
+        return;
+    }
+
+    // 3. Preparar el array de genéticas, eliminando duplicados y vacíos
+    const topGeneticsRaw = [topGenetic1, topGenetic2, topGenetic3];
+    const topGenetics = [...new Set(topGeneticsRaw)].filter(id => id !== ''); // Filtra vacíos y duplicados
+
+    // 4. Construir el objeto a guardar en Firestore
+    const dataToSave = {
+        publicProfile: {
+            username: username || null, // Guardar null si está vacío
+            topGenetics: topGenetics
+        }
+    };
+
+    // 5. Guardar en la base de datos
+    try {
+        const userDocRef = doc(db, 'users', userId);
+        // Usamos set con merge:true para crear o actualizar el campo publicProfile sin borrar otros datos del usuario
+        await setDoc(userDocRef, dataToSave, { merge: true });
+
+        showNotification('Perfil guardado con éxito.');
+        getEl('profileModal').style.display = 'none'; // Cerrar el modal
+
+    } catch (error) {
+        console.error("Error al guardar el perfil:", error);
+        showNotification('No se pudo guardar el perfil.', 'error');
+    }
+},
     handleEliminarFrasco: (frascoId) => {
         handlers.showConfirmationModal('¿Seguro que quieres eliminar este frasco? Esta acción indica que el stock se ha terminado.', async () => {
             try {
