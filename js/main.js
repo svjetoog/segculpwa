@@ -25,7 +25,8 @@ import {
     openBulkAddModal as uiOpenBulkAddModal, 
     renderBulkStep2,
     openSetupWizardModal as uiOpenSetupWizardModal,
-    renderWizardCicloRow
+    renderWizardCicloRow,
+    openCuradoModal
 } from './ui.js';
 import { startMainTour, startToolsTour } from './onboarding.js';
 
