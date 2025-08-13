@@ -516,7 +516,7 @@ const handlers = {
         openCuradoModal(currentFrascos, handlers);
     },
     updateAdminUI: () => {
-    updateAdminUI(currentUserRole === 'admin');
+    uiUpdateAdminUI(currentUserRole === 'admin'); // Usamos el nombre importado con el alias
 },
     handleOpenProfileModal: async () => {
     try {
