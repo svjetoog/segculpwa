@@ -29,12 +29,14 @@ import {
     openCuradoModal,
     openProfileModal,
     updateBellIcon,
-    renderNotificationsDropdown
+    renderNotificationsDropdown,
+    updateAdminUI as uiUpdateAdminUI
 } from './ui.js';
 import { startMainTour, startToolsTour } from './onboarding.js';
 
 // --- STATE MANAGEMENT ---
 let userId = null;
+let currentUserRole = 'user';
 let salasUnsubscribe = null, ciclosUnsubscribe = null, logsUnsubscribe = null, geneticsUnsubscribe = null, seedsUnsubscribe = null, historialUnsubscribe = null, phenohuntUnsubscribe = null, frascosUnsubscribe = null;
 let currentSalas = [], currentCiclos = [], currentGenetics = [], currentSeeds = [], currentHistorial = [], currentPhenohunts = [], currentFrascos = [];
 let currentSalaId = null, currentSalaName = null;
@@ -513,6 +515,9 @@ const handlers = {
         // Llama a la función de UI que creamos en el paso anterior
         openCuradoModal(currentFrascos, handlers);
     },
+    updateAdminUI: () => {
+    updateAdminUI(currentUserRole === 'admin');
+},
     handleOpenProfileModal: async () => {
     try {
         console.log('Abriendo modal de perfil...'); // Detective 1
@@ -2051,20 +2056,25 @@ handlePhenoCardUpdate: async (e) => {
     }
 };
 
-onAuthStateChanged(auth, async user => { // Convertimos la función en async
+onAuthStateChanged(auth, async user => {
     getEl('initial-loader').classList.add('hidden');
     if (user) {
         userId = user.uid;
 
-        // --- INICIO DEL BLOQUE DE MIGRACIÓN ---
-        // Mostramos el loader de nuevo mientras se ejecuta la posible migración
-        getEl('initial-loader').classList.remove('hidden'); 
-        
+        // Leemos el documento del usuario para obtener su rol
+        const userDocRef = doc(db, 'users', userId);
+        const userDoc = await getDoc(userDocRef);
+        if (userDoc.exists() && userDoc.data().role === 'admin') {
+            currentUserRole = 'admin';
+        } else {
+            currentUserRole = 'user';
+            // Si no es admin, creamos su documento de perfil si no existe
+            if (!userDoc.exists()) {
+                await setDoc(userDocRef, { publicProfile: {} });
+            }
+        }
+
         await runDataMigration(user.uid);
-        
-        // Ocultamos el loader una vez que la migración ha terminado
-        getEl('initial-loader').classList.add('hidden');
-        // --- FIN DEL BLOQUE DE MIGRACIÓN ---
 
         handlers.hideAllViews();
         const appView = getEl('app');
@@ -2072,44 +2082,31 @@ onAuthStateChanged(auth, async user => { // Convertimos la función en async
         appView.classList.add('view-container');
         getEl('welcomeUser').innerText = `Anota todo, no seas pancho.`;
 
-        // Ahora, cargamos los datos ya migrados/unificados
         loadSalas();
         loadCiclos();
-        loadGenetics(); // Este ahora contiene las semillas también
+        loadGenetics(); 
         loadFrascos();
-        // loadSeeds(); // Esta función ya no es necesaria
         loadPhenohunts();
         loadHistorial();
         loadNotifications();
         initializeEventListeners(handlers);
-        window.addEventListener('click', (e) => {
-            if (!e.target.closest('.ciclo-item-container')) {
-                document.querySelectorAll('.ciclo-actions-menu').forEach(menu => {
-                    menu.classList.add('hidden');
-                });
-            }
-        });
-
-        getEl('searchSalas').addEventListener('input', e => {
-            const searchTerm = e.target.value.toLowerCase();
-            const filteredSalas = currentSalas.filter(sala => sala.name.toLowerCase().includes(searchTerm));
-            if (sortableSalas) sortableSalas.destroy();
-            renderSalasGrid(filteredSalas, currentCiclos, handlers);
-            initializeDragAndDrop();
-        });
+        handlers.updateAdminUI(); // <--- Llamamos a la nueva función para mostrar/ocultar el botón
 
     } else {
         userId = null;
+        currentUserRole = 'user'; // Reseteamos el rol al cerrar sesión
+
         if (salasUnsubscribe) salasUnsubscribe();
         if (ciclosUnsubscribe) ciclosUnsubscribe();
         if (geneticsUnsubscribe) geneticsUnsubscribe();
-        if (seedsUnsubscribe) seedsUnsubscribe(); // Aún es bueno limpiarlo en logout
+        if (seedsUnsubscribe) seedsUnsubscribe();
         if (phenohuntUnsubscribe) phenohuntUnsubscribe();
         if (frascosUnsubscribe) frascosUnsubscribe(); 
         if (historialUnsubscribe) historialUnsubscribe();
         if (notificationsUnsubscribe) notificationsUnsubscribe();
 
         handlers.hideAllViews();
+        handlers.updateAdminUI(); // <--- Ocultamos el botón al cerrar sesión
         const authView = getEl('authView');
         authView.classList.remove('hidden');
         authView.classList.add('view-container');

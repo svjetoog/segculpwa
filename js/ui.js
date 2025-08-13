@@ -1751,13 +1751,30 @@ export function initializeEventListeners(handlers) {
     const menuSettings = getEl('menuSettings');
     if (menuSettings) menuSettings.addEventListener('click', (e) => { e.preventDefault(); handlers.showSettingsView(); getEl('dropdownMenu').classList.add('hidden'); });
     
+    const adminMenuBtn = getEl('adminMenuBtn');
+    if (adminMenuBtn) {
+        adminMenuBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            getEl('dropdownMenu').classList.add('hidden');
+            getEl('notificationsMenu').classList.add('hidden');
+            getEl('adminMenu').classList.toggle('hidden');
+        });
+    }
+
     // ---- Listeners Globales ----
     window.addEventListener('click', (e) => {
+        const menuBtn = getEl('menuBtn');
+        const notificationsBtn = getEl('notificationsBtn');
+        // const adminMenuBtn está definida arriba
+
         if (menuBtn && getEl('dropdownMenu') && !menuBtn.contains(e.target) && !getEl('dropdownMenu').contains(e.target)) {
             getEl('dropdownMenu').classList.add('hidden');
         }
         if (notificationsBtn && getEl('notificationsMenu') && !notificationsBtn.contains(e.target) && !getEl('notificationsMenu').contains(e.target)) {
             getEl('notificationsMenu').classList.add('hidden');
+        }
+        if (adminMenuBtn && getEl('adminMenu') && !adminMenuBtn.contains(e.target) && !getEl('adminMenu').contains(e.target)) {
+            getEl('adminMenu').classList.add('hidden');
         }
     });
 
@@ -2369,4 +2386,10 @@ export function renderNotificationsDropdown(notifications) {
         `;
         list.appendChild(item);
     });
+}
+export function updateAdminUI(isAdmin) {
+    const adminBtn = getEl('adminMenuBtn');
+    if (adminBtn) {
+        adminBtn.classList.toggle('hidden', !isAdmin);
+    }
 }
