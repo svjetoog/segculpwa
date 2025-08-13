@@ -498,8 +498,9 @@ const handlers = {
 
         // 3. Calcular los tipos de cultivo activos (sustrato, hidroponia)
         const activeCiclos = currentCiclos.filter(c => c.estado === 'activo');
-        const activeCultivationTypes = [...new Set(activeCiclos.map(c => c.cultivationType))];
-
+        const activeCultivationTypes = [...new Set(
+            activeCiclos.map(c => c.cultivationType || 'Sustrato')
+        )].filter(Boolean);
         // 4. Llamar a la función de UI para abrir el modal con todos los datos
         openProfileModal(profileData, currentGenetics, activeCultivationTypes, handlers);
 

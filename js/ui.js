@@ -96,56 +96,58 @@ export function openProfileModal(profileData, allGenetics, activeCultivationType
     const modal = getEl('profileModal');
     if (!modal) return;
 
-    // Preparamos los datos para mostrarlos
     const username = profileData?.username || '';
     const memberSince = profileData?.creationTime
         ? new Date(profileData.creationTime).toLocaleDateString('es-AR', { year: 'numeric', month: 'long' })
         : 'Fecha desconocida';
 
-    const cultivationTagsHTML = activeCultivationTypes.length > 0
-        ? activeCultivationTypes.map(type => `<span class="tag tag-standard">${type}</span>`).join('')
-        : '<p class="text-sm text-gray-500 dark:text-gray-400">Aún no hay ciclos activos.</p>';
-
-    // Creamos las opciones para el selector de genéticas
     const geneticsOptionsHTML = allGenetics
         .map(g => `<option value="${g.id}">${g.name}</option>`)
         .join('');
-
+    
+    // --- INICIO DEL NUEVO DISEÑO DEL CONTENIDO ---
     const content = `
         <div class="space-y-6">
-            <div>
-                <label for="profile-username" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nombre de Usuario</label>
-                <input type="text" id="profile-username" value="${username}" placeholder="Elige un @nombredeusuario" class="w-full p-2 rounded-md font-mono">
-                <p class="text-xs text-gray-400 mt-1">Este será tu nombre en la comunidad. Solo letras, números y guiones bajos.</p>
-            </div>
-
-            <hr class="border-gray-300 dark:border-gray-600">
-
-            <div>
-                <h3 class="text-lg font-medium text-gray-800 dark:text-gray-200 mb-2">Top 3 Genéticas</h3>
-                <div class="space-y-2">
-                    <select id="top-genetic-1" class="w-full p-2 rounded-md top-genetic-select"><option value="">- Seleccionar Genética 1 -</option>${geneticsOptionsHTML}</select>
-                    <select id="top-genetic-2" class="w-full p-2 rounded-md top-genetic-select"><option value="">- Seleccionar Genética 2 -</option>${geneticsOptionsHTML}</select>
-                    <select id="top-genetic-3" class="w-full p-2 rounded-md top-genetic-select"><option value="">- Seleccionar Genética 3 -</option>${geneticsOptionsHTML}</select>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                <div>
+                    <label for="profile-username" class="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="w-4 h-4"><path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM12.735 14c.618 0 1.093-.561.872-1.139a6.002 6.002 0 0 0-11.215 0c-.22.578.254 1.139.872 1.139h9.47Z" /></svg>
+                        Nombre de Usuario
+                    </label>
+                    <input type="text" id="profile-username" value="${username}" placeholder="Elige tu @alias" class="w-full p-2 rounded-md font-mono">
+                </div>
+                <div class="text-center md:text-right self-end">
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Miembro desde</p>
+                    <p class="font-semibold text-amber-400">${memberSince}</p>
                 </div>
             </div>
 
-            <hr class="border-gray-300 dark:border-gray-600">
-            
-            <div class="text-center">
-                <p class="text-sm text-gray-500 dark:text-gray-400">Miembro desde: ${memberSince}</p>
-                <div class="mt-2 flex justify-center flex-wrap gap-2">
-                    ${cultivationTagsHTML}
+            <fieldset class="border border-gray-300 dark:border-gray-600 p-4 rounded-md">
+                <legend class="px-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                    <span class="flex items-center gap-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="w-4 h-4"><path fill-rule="evenodd" d="M8 1.75a.75.75 0 0 1 .692.462l1.41 3.393 3.663.293a.75.75 0 0 1 .428 1.317l-2.79 2.345.833 3.585a.75.75 0 0 1-1.112.808L8 11.54l-3.125 1.81a.75.75 0 0 1-1.112-.808l.833-3.585L1.808 6.922a.75.75 0 0 1 .428-1.317l3.663-.293 1.41-3.393A.75.75 0 0 1 8 1.75Z" clip-rule="evenodd" /></svg>
+                        Top 3 Genéticas
+                    </span>
+                </legend>
+                <div class="space-y-2 mt-2">
+                    <select id="top-genetic-1" class="w-full p-2 rounded-md top-genetic-select"><option value="">- Posición #1 -</option>${geneticsOptionsHTML}</select>
+                    <select id="top-genetic-2" class="w-full p-2 rounded-md top-genetic-select"><option value="">- Posición #2 -</option>${geneticsOptionsHTML}</select>
+                    <select id="top-genetic-3" class="w-full p-2 rounded-md top-genetic-select"><option value="">- Posición #3 -</option>${geneticsOptionsHTML}</select>
+                </div>
+            </fieldset>
+
+            <div>
+                <h4 class="text-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Estilos de Cultivo Activos</h4>
+                <div class="flex justify-center flex-wrap gap-2">
+                    ${activeCultivationTypes.length > 0 ? activeCultivationTypes.map(type => `<span class="tag tag-standard">${type}</span>`).join('') : '<p class="text-xs text-gray-500 dark:text-gray-400 italic">No hay ciclos activos.</p>'}
                 </div>
             </div>
         </div>
     `;
+    // --- FIN DEL NUEVO DISEÑO ---
 
-    // Reutilizamos la función para crear el marco del modal
-    modal.innerHTML = createModalHTML('profileModalContent', 'Editar Perfil Público', 'profileForm', content, 'Guardar Cambios', 'cancelProfileBtn');
+    modal.innerHTML = createModalHTML('profileModalContent', 'Perfil Público', 'profileForm', content, 'Guardar Cambios', 'cancelProfileBtn');
     
-    // Aquí, más adelante, seleccionaremos las genéticas guardadas
-    // Por ahora, solo lo mostramos
     modal.style.display = 'flex';
 
     getEl('cancelProfileBtn').addEventListener('click', () => modal.style.display = 'none');
