@@ -1206,20 +1206,46 @@ handlePhenoCardUpdate: async (e) => {
         const form = e.target;
         const cicloId = form.dataset.id;
 
+        // --- INICIO DE CAMBIOS ---
+
+        // NUEVO: Recolectamos los datos de los nuevos campos.
+        const cultivationType = getEl('cultivationType').value;
+        const cultivationDetails = {};
+
+        if (cultivationType === 'Sustrato') {
+            cultivationDetails.potCount = parseInt(getEl('potCount').value) || null;
+            cultivationDetails.potSizeLiters = parseFloat(getEl('potSizeLiters').value) || null;
+            cultivationDetails.substrateType = getEl('substrateType').value.trim() || null;
+            cultivationDetails.irrigationType = getEl('irrigationType').value || 'Manual';
+        } else if (cultivationType === 'Hidroponia') {
+            cultivationDetails.containerCount = parseInt(getEl('containerCount').value) || null;
+            cultivationDetails.systemLiters = parseFloat(getEl('systemLiters').value) || null;
+            cultivationDetails.systemType = getEl('systemType').value.trim() || null;
+        }
+
+        // MODIFICADO: Obtenemos los datos básicos del ciclo.
+        const cicloData = {
+            name: getEl('ciclo-name').value.trim(),
+            salaId: getEl('ciclo-sala-select').value,
+            phase: getEl('cicloPhase').value,
+            cultivationType: cultivationType, // Usamos la variable que ya definimos
+            vegetativeStartDate: getEl('vegetativeStartDate').value,
+            floweringStartDate: getEl('floweringStartDate').value,
+            notes: getEl('ciclo-notes').value.trim(),
+            cultivationDetails: cultivationDetails // AÑADIMOS EL NUEVO OBJETO
+        };
+
+        if (!cicloData.name || !cicloData.salaId) {
+            showNotification('Nombre y sala son obligatorios.', 'error'); return;
+        }
+
+        // --- FIN DE CAMBIOS ---
+        
+        // El resto de la lógica para creación vs edición se mantiene, 
+        // pero ahora 'cicloData' ya contiene los nuevos detalles.
+
         if (cicloId) {
-            // La lógica de edición no cambia, la mantenemos como estaba.
-            const cicloData = {
-                name: getEl('ciclo-name').value.trim(),
-                salaId: getEl('ciclo-sala-select').value,
-                phase: getEl('cicloPhase').value,
-                cultivationType: getEl('cultivationType').value,
-                vegetativeStartDate: getEl('vegetativeStartDate').value,
-                floweringStartDate: getEl('floweringStartDate').value,
-                notes: getEl('ciclo-notes').value.trim(),
-            };
-            if (!cicloData.name || !cicloData.salaId) {
-                showNotification('Nombre y sala son obligatorios.', 'error'); return;
-            }
+            // Lógica de EDICIÓN de un ciclo existente
             try {
                 const originalCiclo = currentCiclos.find(c => c.id === cicloId);
                 if (originalCiclo && originalCiclo.phase === 'Vegetativo' && cicloData.phase === 'Floración') {
@@ -1239,7 +1265,7 @@ handlePhenoCardUpdate: async (e) => {
             return;
         }
 
-        // --- Lógica de CREACIÓN de ciclo con selección de genéticas ---
+        // Lógica de CREACIÓN de un nuevo ciclo
         const geneticsDataInput = getEl('ciclo-genetics-data');
         const selectedGenetics = geneticsDataInput.value ? JSON.parse(geneticsDataInput.value) : [];
 
@@ -1248,28 +1274,14 @@ handlePhenoCardUpdate: async (e) => {
             return;
         }
         
-        const cicloData = {
-            name: getEl('ciclo-name').value.trim(),
-            salaId: getEl('ciclo-sala-select').value,
-            phase: getEl('cicloPhase').value,
-            cultivationType: getEl('cultivationType').value,
-            vegetativeStartDate: getEl('vegetativeStartDate').value,
-            floweringStartDate: getEl('floweringStartDate').value,
-            notes: getEl('ciclo-notes').value.trim(),
-            estado: 'activo',
-            isPhenohunt: selectedGenetics.some(g => g.trackIndividually), // El ciclo es phenohunt si al menos un item lo es.
-            genetics: []
-        };
-
-        if (!cicloData.name || !cicloData.salaId) {
-            showNotification('Nombre y sala son obligatorios.', 'error');
-            return;
-        }
+        // Añadimos las propiedades restantes al objeto cicloData para la creación
+        cicloData.estado = 'activo';
+        cicloData.isPhenohunt = selectedGenetics.some(g => g.trackIndividually);
+        cicloData.genetics = [];
         
         try {
             const batch = writeBatch(db);
 
-            // 1. Preparar el array de genéticas para el ciclo según el tracking individual
             selectedGenetics.forEach(item => {
                 if (item.trackIndividually) {
                     for (let i = 0; i < item.quantity; i++) {
@@ -1282,7 +1294,6 @@ handlePhenoCardUpdate: async (e) => {
                         });
                     }
                 } else {
-                    // Se añade como un solo grupo
                     cicloData.genetics.push({
                         id: item.id,
                         name: item.name,
@@ -1302,9 +1313,8 @@ handlePhenoCardUpdate: async (e) => {
             batch.set(newCicloRef, cicloData);
 
             for (const item of selectedGenetics) {
-                const collectionName = item.source === 'clone' ? 'genetics' : 'seeds';
-                const stockField = item.source === 'clone' ? 'cloneStock' : 'quantity';
-                const itemRef = doc(db, `users/${userId}/${collectionName}`, item.id);
+                const stockField = item.source === 'clone' ? 'cloneStock' : 'seedStock';
+                const itemRef = doc(db, `users/${userId}/genetics`, item.id);
                 batch.update(itemRef, { [stockField]: increment(-item.quantity) });
             }
 

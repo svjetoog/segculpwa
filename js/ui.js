@@ -172,7 +172,6 @@ export function openSalaModal(sala = null) {
     modal.style.display = 'flex';
 }
 
-// MODIFICADO: La función ahora acepta el objeto handlers para poder llamar al selector de genéticas.
 export function openCicloModal(ciclo = null, salas = [], preselectedSalaId = null, handlers) {
     const title = ciclo ? 'Editar Ciclo' : 'Añadir Ciclo';
     const salaOptions = salas.length > 0
@@ -193,6 +192,11 @@ export function openCicloModal(ciclo = null, salas = [], preselectedSalaId = nul
         </div>
     ` : '';
     
+    // -- INICIO DE LOS CAMBIOS --
+
+    // NUEVO: Obtenemos los detalles guardados, si existen, para rellenar los campos.
+    const details = ciclo?.cultivationDetails || {};
+
     const content = `
         <div class="space-y-4">
             <div>
@@ -222,6 +226,50 @@ export function openCicloModal(ciclo = null, salas = [], preselectedSalaId = nul
                     </select>
                 </div>
             </div>
+
+            <div id="sustrato-details-container" class="hidden space-y-4 border-t border-gray-200 dark:border-gray-700 pt-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label for="potCount" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Cant. Macetas</label>
+                        <input type="number" id="potCount" class="w-full p-2 rounded-md" value="${details.potCount || ''}">
+                    </div>
+                    <div>
+                        <label for="potSizeLiters" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Litros Macetas</label>
+                        <input type="number" id="potSizeLiters" class="w-full p-2 rounded-md" value="${details.potSizeLiters || ''}">
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label for="substrateType" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo de Sustrato</label>
+                        <input type="text" id="substrateType" placeholder="Ej: Light Mix, Coco, Inerte" class="w-full p-2 rounded-md" value="${details.substrateType || ''}">
+                    </div>
+                    <div>
+                        <label for="irrigationType" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo de Riego</label>
+                        <select id="irrigationType" class="w-full p-2 rounded-md">
+                            <option value="Manual" ${details.irrigationType === 'Manual' ? 'selected' : ''}>Manual</option>
+                            <option value="Automático" ${details.irrigationType === 'Automático' ? 'selected' : ''}>Automático</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="hidroponia-details-container" class="hidden space-y-4 border-t border-gray-200 dark:border-gray-700 pt-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label for="containerCount" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Cant. Recipientes</label>
+                        <input type="number" id="containerCount" class="w-full p-2 rounded-md" value="${details.containerCount || ''}">
+                    </div>
+                    <div>
+                        <label for="systemLiters" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Litros del Sistema</label>
+                        <input type="number" id="systemLiters" class="w-full p-2 rounded-md" value="${details.systemLiters || ''}">
+                    </div>
+                </div>
+                <div>
+                    <label for="systemType" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo de Sistema Hidro</label>
+                    <input type="text" id="systemType" placeholder="Ej: DWC, RDWC, Aeroponía" class="w-full p-2 rounded-md" value="${details.systemType || ''}">
+                </div>
+            </div>
+
             <div id="vegetativeDateContainer" class="${(ciclo && ciclo.phase === 'Vegetativo') || !ciclo ? '' : 'hidden'}">
                 <label for="vegetativeStartDate" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fecha Inicio Vegetativo</label>
                 <input type="date" id="vegetativeStartDate" class="w-full p-2 rounded-md" value="${ciclo ? ciclo.vegetativeStartDate : ''}">
@@ -237,18 +285,37 @@ export function openCicloModal(ciclo = null, salas = [], preselectedSalaId = nul
             ${geneticsSectionHTML}
         </div>
     `;
+
+    // -- FIN DE LOS CAMBIOS --
+
     const modal = getEl('cicloModal');
     modal.innerHTML = createModalHTML('cicloModalContent', title, 'cicloForm', content, ciclo ? 'Guardar Cambios' : 'Crear Ciclo', 'cancelCicloBtn');
     
     getEl('cicloForm').dataset.id = ciclo ? ciclo.id : '';
     modal.style.display = 'flex';
+
+    // NUEVO: Lógica para mostrar/ocultar los campos condicionales
+    const cultivationTypeSelect = getEl('cultivationType');
+    const sustratoDetails = getEl('sustrato-details-container');
+    const hidroponiaDetails = getEl('hidroponia-details-container');
+
+    const toggleCultivationDetails = () => {
+        if (cultivationTypeSelect.value === 'Sustrato') {
+            sustratoDetails.classList.remove('hidden');
+            hidroponiaDetails.classList.add('hidden');
+        } else if (cultivationTypeSelect.value === 'Hidroponia') {
+            sustratoDetails.classList.add('hidden');
+            hidroponiaDetails.classList.remove('hidden');
+        }
+    };
     
-    // NUEVO: Lógica para el botón que abre el selector de genéticas
+    cultivationTypeSelect.addEventListener('change', toggleCultivationDetails);
+    toggleCultivationDetails(); // Llamamos una vez al inicio para establecer el estado correcto.
+    
     if (!ciclo) {
         const openSelectorBtn = getEl('open-genetics-selector-btn');
         if(openSelectorBtn) {
             openSelectorBtn.addEventListener('click', () => {
-                // El handler se encargará de llamar a la UI con los datos necesarios
                 handlers.openGeneticsSelector((selectedGenetics) => {
                     renderSelectedGeneticsForCiclo(selectedGenetics);
                 });
@@ -820,7 +887,6 @@ export function renderCicloDetails(ciclo, handlers) {
     else if(ciclo.phase === 'Vegetativo' && diffDaysVege !== null) statusText = `Día ${diffDaysVege} de vegetativo.`;
     else if(ciclo.phase === 'Floración' && diffDaysFlora !== null) statusText = `Día ${diffDaysFlora} de floración.`;
 
-    // MODIFICADO: Añadida la sección "Genéticas en Cultivo"
     const geneticsListHTML = (ciclo.genetics && ciclo.genetics.length > 0)
         ? ciclo.genetics.map(g => `
             <li class="flex items-center gap-2 p-2 rounded-md bg-gray-100 dark:bg-gray-800">
@@ -830,6 +896,39 @@ export function renderCicloDetails(ciclo, handlers) {
             </li>
           `).join('')
         : '<p class="text-sm text-gray-500 dark:text-gray-400 italic">No hay genéticas definidas para este ciclo.</p>';
+
+    // --- NUEVO: Tarjeta de Detalles de Cultivo ---
+    let cultivationDetailsHTML = '';
+    const details = ciclo.cultivationDetails;
+    if (details) {
+        let detailsList = '';
+        if (ciclo.cultivationType === 'Sustrato') {
+            detailsList = `
+                ${details.potCount ? `<li class="flex justify-between"><span>🪴 Cant. Macetas:</span> <strong>${details.potCount}</strong></li>` : ''}
+                ${details.potSizeLiters ? `<li class="flex justify-between"><span>💧 Litros Macetas:</span> <strong>${details.potSizeLiters}L</strong></li>` : ''}
+                ${details.substrateType ? `<li class="flex justify-between"><span>🧱 Sustrato:</span> <strong>${details.substrateType}</strong></li>` : ''}
+                ${details.irrigationType ? `<li class="flex justify-between"><span>💦 Riego:</span> <strong>${details.irrigationType}</strong></li>` : ''}
+            `;
+        } else if (ciclo.cultivationType === 'Hidroponia') {
+            detailsList = `
+                ${details.containerCount ? `<li class="flex justify-between"><span>🧊 Cant. Recipientes:</span> <strong>${details.containerCount}</strong></li>` : ''}
+                ${details.systemLiters ? `<li class="flex justify-between"><span>💧 Litros Sistema:</span> <strong>${details.systemLiters}L</strong></li>` : ''}
+                ${details.systemType ? `<li class="flex justify-between"><span>🔧 Sistema:</span> <strong>${details.systemType}</strong></li>` : ''}
+            `;
+        }
+
+        if (detailsList.trim() !== '') {
+            cultivationDetailsHTML = `
+                <div class="my-6 p-4 card rounded-lg">
+                    <h3 class="text-lg font-semibold mb-3 text-gray-800 dark:text-gray-200">Detalles del Sistema</h3>
+                    <ul class="space-y-1 text-sm text-gray-700 dark:text-gray-300">
+                        ${detailsList}
+                    </ul>
+                </div>
+            `;
+        }
+    }
+    // --- FIN DEL NUEVO BLOQUE ---
 
     const html = `
         <div data-ciclo-id="${ciclo.id}">
@@ -848,7 +947,7 @@ export function renderCicloDetails(ciclo, handlers) {
                 </ul>
             </div>
 
-            <div id="timeline-container" class="my-2"></div>
+            ${cultivationDetailsHTML} <div id="timeline-container" class="my-2"></div>
             <main>
                 ${actionButtonsHTML}
             </main>
