@@ -500,7 +500,7 @@ const handlers = {
 
         // 3. Calcular los tipos de cultivo activos (CON LÓGICA MEJORADA)
         console.log('Ciclos actuales en el estado global:', currentCiclos); // Detective 2
-        const activeCiclos = currentCiclos.filter(c => c.estado === 'activo');
+        const activeCiclos = currentCiclos.filter(c => c.estado !== 'en_secado');
         console.log('Ciclos activos (después de filtrar):', activeCiclos); // Detective 3
         
         const activeCultivationTypes = [...new Set(
