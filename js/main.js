@@ -27,7 +27,9 @@ import {
     openSetupWizardModal as uiOpenSetupWizardModal,
     renderWizardCicloRow,
     openCuradoModal,
-    openProfileModal
+    openProfileModal,
+    updateBellIcon,
+    renderNotificationsDropdown
 } from './ui.js';
 import { startMainTour, startToolsTour } from './onboarding.js';
 
@@ -43,6 +45,8 @@ let sortableSalas = null;
 let sortableGenetics = null;
 let sortableStock = null;
 let sortableSeeds = null;
+let notificationsUnsubscribe = null;
+let currentNotifications = [];
 
 const PREDEFINED_TAGS = {
     "Cualidades del Producto Final": ["Muy Potente", "Ultra Resinoso", "Aroma Intenso", "Sabor Complejo", "Flores Densas", "Aspecto Atractivo"],
@@ -292,7 +296,33 @@ function loadSalas() {
         getEl('loadingSalas').innerText = "Error al cargar las salas.";
     });
 }
+function loadNotifications() {
+    if (!userId) return;
 
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+    const q = query(
+        collection(db, `users/${userId}/notifications`),
+        where("timestamp", ">=", oneWeekAgo),
+        orderBy("timestamp", "desc")
+    );
+
+    if (notificationsUnsubscribe) notificationsUnsubscribe();
+
+    notificationsUnsubscribe = onSnapshot(q, (snapshot) => {
+        currentNotifications = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        const hasUnread = currentNotifications.some(n => !n.read);
+
+        updateBellIcon(hasUnread);
+        renderNotificationsDropdown(currentNotifications);
+
+    }, error => {
+        console.error("Error cargando notificaciones:", error);
+        updateBellIcon(false);
+    });
+}
 function loadCiclos() {
     if (!userId) return;
     const q = query(collection(db, `users/${userId}/ciclos`));
@@ -559,6 +589,39 @@ const handlers = {
     } catch (error) {
         console.error("Error al guardar el perfil:", error);
         showNotification('No se pudo guardar el perfil.', 'error');
+    }
+},
+handleBellClick: async () => {
+    const menu = getEl('notificationsMenu');
+    menu.classList.toggle('hidden');
+
+    if (!menu.classList.contains('hidden')) {
+        const unreadNotifications = currentNotifications.filter(n => !n.read);
+        if (unreadNotifications.length > 0) {
+            const batch = writeBatch(db);
+            unreadNotifications.forEach(notif => {
+                const notifRef = doc(db, `users/${userId}/notifications`, notif.id);
+                batch.update(notifRef, { read: true });
+            });
+            try {
+                await batch.commit();
+            } catch (error) {
+                console.error("Error marcando notificaciones como leídas:", error);
+            }
+        }
+    }
+},
+
+createNotification: async (message) => {
+    if (!userId) return;
+    try {
+        await addDoc(collection(db, `users/${userId}/notifications`), {
+            message: message,
+            timestamp: serverTimestamp(),
+            read: false
+        });
+    } catch (error) {
+        console.error("Error creando notificación:", error);
     }
 },
     handleEliminarFrasco: (frascoId) => {
@@ -2017,6 +2080,7 @@ onAuthStateChanged(auth, async user => { // Convertimos la función en async
         // loadSeeds(); // Esta función ya no es necesaria
         loadPhenohunts();
         loadHistorial();
+        loadNotifications();
         initializeEventListeners(handlers);
         window.addEventListener('click', (e) => {
             if (!e.target.closest('.ciclo-item-container')) {
@@ -2043,6 +2107,7 @@ onAuthStateChanged(auth, async user => { // Convertimos la función en async
         if (phenohuntUnsubscribe) phenohuntUnsubscribe();
         if (frascosUnsubscribe) frascosUnsubscribe(); 
         if (historialUnsubscribe) historialUnsubscribe();
+        if (notificationsUnsubscribe) notificationsUnsubscribe();
 
         handlers.hideAllViews();
         const authView = getEl('authView');

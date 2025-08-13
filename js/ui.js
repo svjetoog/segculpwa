@@ -1686,13 +1686,27 @@ export function initializeEventListeners(handlers) {
         e.stopPropagation();
         getEl('dropdownMenu').classList.toggle('hidden');
     });
-    window.addEventListener('click', (e) => {
-        const menuBtn = getEl('menuBtn');
-        const dropdownMenu = getEl('dropdownMenu');
-        if (menuBtn && dropdownMenu && !menuBtn.contains(e.target) && !dropdownMenu.contains(e.target)) {
-            dropdownMenu.classList.add('hidden');
-        }
-    });
+    getEl('notificationsBtn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    getEl('dropdownMenu').classList.add('hidden'); // Cierra el otro menú
+    handlers.handleBellClick(); // Llama al nuevo handler
+});
+
+window.addEventListener('click', (e) => {
+    // Cierra el menú principal si se hace clic fuera
+    const menuBtn = getEl('menuBtn');
+    const dropdownMenu = getEl('dropdownMenu');
+    if (menuBtn && dropdownMenu && !menuBtn.contains(e.target) && !dropdownMenu.contains(e.target)) {
+        dropdownMenu.classList.add('hidden');
+    }
+
+    // Cierra el menú de notificaciones si se hace clic fuera
+    const bellBtn = getEl('notificationsBtn');
+    const notificationsMenu = getEl('notificationsMenu');
+    if (bellBtn && notificationsMenu && !bellBtn.contains(e.target) && !notificationsMenu.contains(e.target)) {
+        notificationsMenu.classList.add('hidden');
+    }
+});
     getEl('aboutBtn').addEventListener('click', () => getEl('aboutModal').style.display = 'flex');
     
     const menuAddSalaLink = getEl('menuAddSala');
@@ -2254,4 +2268,69 @@ export function openCuradoModal(frascos, handlers) {
             });
         });
     }, 0);
+}
+// Función para actualizar el aspecto del botón de la campana
+export function updateBellIcon(hasUnread) {
+    const notificationsBtn = getEl('notificationsBtn');
+    const indicator = getEl('notification-indicator');
+
+    if (!notificationsBtn || !indicator) return;
+
+    if (hasUnread) {
+        notificationsBtn.classList.remove('btn-secondary');
+        notificationsBtn.classList.add('btn-primary');
+        indicator.classList.remove('hidden');
+    } else {
+        notificationsBtn.classList.remove('btn-primary');
+        notificationsBtn.classList.add('btn-secondary');
+        indicator.classList.add('hidden');
+    }
+}
+
+// Función para calcular el tiempo relativo (ej: "hace 5 minutos")
+function timeAgo(date) {
+    const seconds = Math.floor((new Date() - date) / 1000);
+    let interval = seconds / 31536000;
+    if (interval > 1) return `hace ${Math.floor(interval)} años`;
+    interval = seconds / 2592000;
+    if (interval > 1) return `hace ${Math.floor(interval)} meses`;
+    interval = seconds / 86400;
+    if (interval > 1) return `hace ${Math.floor(interval)} días`;
+    interval = seconds / 3600;
+    if (interval > 1) return `hace ${Math.floor(interval)} horas`;
+    interval = seconds / 60;
+    if (interval > 1) return `hace ${Math.floor(interval)} minutos`;
+    return `hace ${Math.floor(seconds)} segundos`;
+}
+
+
+// Función para renderizar la lista desplegable de notificaciones
+export function renderNotificationsDropdown(notifications) {
+    const list = getEl('notifications-list');
+    const emptyState = getEl('no-notifications-state');
+    
+    if (!list || !emptyState) return;
+
+    list.innerHTML = '';
+
+    if (notifications.length === 0) {
+        emptyState.classList.remove('hidden');
+        return;
+    }
+    
+    emptyState.classList.add('hidden');
+
+    notifications.forEach(notif => {
+        const item = document.createElement('div');
+        // El color del borde izquierdo puede indicar el tipo de notificación en el futuro
+        item.className = 'p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 border-l-4 border-amber-400';
+        
+        const notificationDate = notif.timestamp ? notif.timestamp.toDate() : new Date();
+
+        item.innerHTML = `
+            <p class="text-sm text-gray-800 dark:text-gray-200">${notif.message}</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">${timeAgo(notificationDate)}</p>
+        `;
+        list.appendChild(item);
+    });
 }
