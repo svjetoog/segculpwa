@@ -1,9 +1,9 @@
 // js/main.js
 import { auth, db } from './firebase.js';
 import { onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updatePassword, deleteUser } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { collection, doc, addDoc, deleteDoc, onSnapshot, query, serverTimestamp, getDocs, writeBatch, updateDoc, arrayUnion, where, increment, getDoc, collectionGroup, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { collection, doc, addDoc, deleteDoc, onSnapshot, query, serverTimestamp, getDocs, writeBatch, updateDoc, arrayUnion, where, increment, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import {
-    getEl, showNotification, renderSalasGrid, createCicloCard, createLogEntry,
+     getEl, showNotification, renderSalasGrid, createCicloCard, createLogEntry,
     renderGeneticsList, renderStockList,
     renderBaulSemillasList,
     renderGeneticsListCompact, renderBaulSemillasListCompact, renderStockListCompact,
@@ -22,20 +22,17 @@ import {
     openPhenoEditModal as uiOpenPhenoEditModal,
     openAddToCatalogModal as uiOpenAddToCatalogModal,
     openPromoteToGeneticModal,
-    renderHeader,
-    renderDashboard,
-    initializeDashboardEventListeners,
-    openBulkAddModal as uiOpenBulkAddModal,
-    renderWizardCicloRow,
+    openBulkAddModal as uiOpenBulkAddModal, 
+    renderBulkStep2,
     openSetupWizardModal as uiOpenSetupWizardModal,
-    renderSalasView
+    renderWizardCicloRow
 } from './ui.js';
 import { startMainTour, startToolsTour } from './onboarding.js';
 
 // --- STATE MANAGEMENT ---
 let userId = null;
-let salasUnsubscribe = null, ciclosUnsubscribe = null, logsUnsubscribe = null, geneticsUnsubscribe = null, seedsUnsubscribe = null, historialUnsubscribe = null, phenohuntUnsubscribe = null;
-let currentSalas = [], currentCiclos = [], currentGenetics = [], currentSeeds = [], currentHistorial = [], currentPhenohunts = [];
+let salasUnsubscribe = null, ciclosUnsubscribe = null, logsUnsubscribe = null, geneticsUnsubscribe = null, seedsUnsubscribe = null, historialUnsubscribe = null, phenohuntUnsubscribe = null, frascosUnsubscribe = null;
+let currentSalas = [], currentCiclos = [], currentGenetics = [], currentSeeds = [], currentHistorial = [], currentPhenohunts = [], currentFrascos = [];
 let currentSalaId = null, currentSalaName = null;
 let confirmCallback = null;
 let activeToolsTab = 'genetics';
@@ -267,24 +264,30 @@ function initializeToolsDragAndDrop() {
 
 function loadSalas() {
     if (!userId) return;
-    // Ya no manipulamos los loaders de la vista de salas, el dashboard se encarga
-    const q = query(collection(db, `users/${userId}/salas`), orderBy("position")); // Añadido orderBy para consistencia
+    getEl('loadingSalas').style.display = 'block';
+    getEl('emptySalasState').style.display = 'none';
+    const q = query(collection(db, `users/${userId}/salas`));
     if (salasUnsubscribe) salasUnsubscribe();
     salasUnsubscribe = onSnapshot(q, (snapshot) => {
         currentSalas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        
-        // Si el dashboard está visible, volvemos a renderizar la grilla de salas dentro de él.
-        const appView = getEl('app');
-        if (appView && !appView.classList.contains('hidden')) {
-            const ciclosActivos = currentCiclos.filter(c => c.estado !== 'finalizado');
-            renderSalasGrid(currentSalas, ciclosActivos, handlers);
-            initializeDragAndDrop(); // Re-inicializamos D&D para las salas
+        currentSalas.sort((a, b) => (a.position || 0) - (b.position || 0));
+
+        const searchInput = getEl('searchSalas');
+        if (sortableSalas) sortableSalas.destroy();
+        if (searchInput && searchInput.value) {
+            const searchTerm = searchInput.value.toLowerCase();
+            const filteredSalas = currentSalas.filter(sala => sala.name.toLowerCase().includes(searchTerm));
+            renderSalasGrid(filteredSalas, currentCiclos, handlers);
+        } else {
+            renderSalasGrid(currentSalas, currentCiclos, handlers);
         }
+        initializeDragAndDrop();
         
+        startMainTour();
+
     }, error => {
         console.error("Error loading salas:", error);
-        const salasGrid = getEl('salasGrid');
-        if(salasGrid) salasGrid.innerHTML = `<p class="text-red-500">Error al cargar las salas.</p>`;
+        getEl('loadingSalas').innerText = "Error al cargar las salas.";
     });
 }
 
@@ -293,30 +296,38 @@ function loadCiclos() {
     const q = query(collection(db, `users/${userId}/ciclos`));
     if (ciclosUnsubscribe) ciclosUnsubscribe();
     ciclosUnsubscribe = onSnapshot(q, (snapshot) => {
-        // `currentCiclos` ahora solo contendrá los que están 'activos' o 'en_curado', pero no los 'finalizados'.
         currentCiclos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter(c => c.estado !== 'finalizado');
         
-        const appShellElement = getEl('app-shell');
-if (appShellElement && !appShellElement.classList.contains('hidden')) {
-    handlers.showDashboard();
-}
-        
-        // Si la vista de detalle de un ciclo está activa, la refrescamos.
+        const searchInput = getEl('searchSalas');
+        if (searchInput && searchInput.value) {
+            const searchTerm = searchInput.value.toLowerCase();
+            const filteredSalas = currentSalas.filter(sala => sala.name.toLowerCase().includes(searchTerm));
+            renderSalasGrid(filteredSalas, currentCiclos, handlers);
+        } else {
+            renderSalasGrid(currentSalas, currentCiclos, handlers);
+        }
+
+        if (!getEl('ciclosView').classList.contains('hidden')) handlers.showCiclosView(currentSalaId, currentSalaName);
         if (!getEl('cicloDetailView').classList.contains('hidden')) {
             const activeCicloId = getEl('cicloDetailView').querySelector('[data-ciclo-id]')?.dataset.cicloId;
             if (activeCicloId) {
                 const updatedCiclo = currentCiclos.find(c => c.id === activeCicloId);
-                if (updatedCiclo) {
-                    handlers.showCicloDetails(updatedCiclo);
-                } else {
-                    // Si el ciclo ya no se encuentra en la lista activa (ej. se finalizó), volvemos al panel.
-                    handlers.hideCicloDetails();
-                }
+                if (updatedCiclo) handlers.showCicloDetails(updatedCiclo);
+                else handlers.hideCicloDetails();
             }
         }
     });
 }
-
+function loadFrascos() {
+    if (!userId) return;
+    const q = query(collection(db, `users/${userId}/frascos`));
+    if (frascosUnsubscribe) frascosUnsubscribe();
+    frascosUnsubscribe = onSnapshot(q, (snapshot) => {
+        currentFrascos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    }, error => {
+        console.error("Error loading frascos:", error);
+    });
+}
 function loadGenetics() {
     if (!userId) return;
     const q = query(collection(db, `users/${userId}/genetics`));
@@ -324,17 +335,9 @@ function loadGenetics() {
     geneticsUnsubscribe = onSnapshot(q, (snapshot) => {
         currentGenetics = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         currentGenetics.sort((a, b) => (a.position || 0) - (b.position || 0));
-        const toolsViewElement = getEl('toolsView');
-
-// Primero preguntamos: ¿Existe el elemento "toolsView"?
-// Y si existe, preguntamos: ¿No tiene la clase 'hidden'?
-if (toolsViewElement && !toolsViewElement.classList.contains('hidden')) {
-    // Como buena práctica, también verificamos que el campo de búsqueda exista
-    const searchToolsElement = getEl('searchTools');
-    if (searchToolsElement) {
-        handlers.handleToolsSearch({ target: searchToolsElement });
-    }
-}
+        if(!getEl('toolsView').classList.contains('hidden')) {
+            handlers.handleToolsSearch({ target: getEl('searchTools') });
+        }
     });
 }
 
@@ -474,6 +477,26 @@ async function runDataMigration(userId) {
 }
 
 const handlers = {
+    handleOpenCuradoModal: () => {
+        // Llama a la función de UI que creamos en el paso anterior
+        uiOpenCuradoModal(currentFrascos, handlers);
+    },
+    
+    handleEliminarFrasco: (frascoId) => {
+        handlers.showConfirmationModal('¿Seguro que quieres eliminar este frasco? Esta acción indica que el stock se ha terminado.', async () => {
+            try {
+                await deleteDoc(doc(db, `users/${userId}/frascos`, frascoId));
+                showNotification('Frasco eliminado del inventario.');
+                // El modal se actualizará solo la próxima vez que se abra, o puedes cerrarlo aquí si prefieres.
+                getEl('curadoModal').style.display = 'none';
+            } catch (error) {
+                console.error("Error eliminando frasco:", error);
+                showNotification('Error al eliminar el frasco.', 'error');
+            }
+        });
+    },
+
+    calculateDaysBetween,
     signOut: () => signOut(auth),
     handleLogin: (email, password) => {
         signInWithEmailAndPassword(auth, email, password)
@@ -490,81 +513,7 @@ const handlers = {
     openSetupWizard: () => {
         uiOpenSetupWizardModal(handlers);
     },
-    showDashboard: () => {
-        // --- LÓGICA RESTAURADA PARA CALCULAR DATOS DINÁMICOS ---
-        const activeCiclos = currentCiclos.filter(c => c.estado === 'activo');
-        
-        // Calculamos el total de plantas sumando las cantidades de genéticas en todos los ciclos activos
-        const totalPlants = activeCiclos.reduce((acc, ciclo) => {
-            return acc + (ciclo.genetics ? ciclo.genetics.reduce((pAcc, gen) => pAcc + (gen.quantity || 0), 0) : 0);
-        }, 0);
 
-        // Creamos los datos para las tarjetas de estadísticas
-        const statsData = [
-            { label: 'Salas Activas', value: currentSalas.length, icon: '🚪', color: 'amber' },
-            { label: 'Ciclos Activos', value: activeCiclos.length, icon: '🔄', color: 'pink' },
-            { label: 'Plantas Totales', value: totalPlants, icon: '🌿', color: 'green' },
-            { label: 'Genéticas Únicas', value: currentGenetics.length, icon: '🧬', color: 'purple' },
-        ];
-
-        // Obtenemos la actividad reciente basándonos en los últimos logs registrados
-        const recentActivity = currentCiclos
-            .filter(c => c.lastLogTimestamp)
-            .sort((a, b) => b.lastLogTimestamp.toDate() - a.lastLogTimestamp.toDate())
-            .slice(0, 3) // Tomamos los 3 más recientes
-            .map(c => {
-                const timeDiff = new Date() - c.lastLogTimestamp.toDate();
-                const hoursAgo = Math.round(timeDiff / (1000 * 60 * 60));
-                const timeAgo = hoursAgo < 1 ? 'Recién' : (hoursAgo === 1 ? 'Hace 1 hora' : `Hace ${hoursAgo} horas`);
-
-                return {
-                    icon: '📝',
-                    description: `Nuevo registro: "${c.lastLogType || 'Actividad'}"`,
-                    cicloName: c.name,
-                    timeAgo: timeAgo
-                };
-            });
-            
-        const curingJars = currentCiclos.filter(c => c.estado === 'en_curado')
-            .sort((a,b) => b.fechaInicioCurado.toDate() - a.fechaInicioCurado.toDate())
-            .slice(0, 3);
-        
-        // --- FIN DE LA LÓGICA RESTAURADA ---
-
-        // 1. Renderizamos el Dashboard con los datos que acabamos de calcular
-        renderDashboard(statsData, recentActivity, curingJars);
-        
-        // 2. Inicializamos los listeners específicos del dashboard (como el carrusel de stats)
-        initializeDashboardEventListeners(statsData);
-        
-        // 3. Conectamos el botón "Ver todas las salas" que está dentro del dashboard
-        const navigateToSalasBtn = getEl('navigateToSalas');
-        if(navigateToSalasBtn) {
-            navigateToSalasBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                handlers.showSalasView();
-            });
-        }
-    },
-    showSalasView: () => {
-        renderSalasView(currentSalas, currentCiclos, handlers);
-        initializeDragAndDrop();
-    },
-    handleFinishCuring: (cicloId, cicloName) => {
-        handlers.showConfirmationModal(`¿Seguro que querés dar por finalizado el frasco de "${cicloName}"? El ciclo se moverá a tu historial de forma permanente.`, async () => {
-            try {
-                const cicloRef = doc(db, `users/${userId}/ciclos`, cicloId);
-                await updateDoc(cicloRef, {
-                    estado: 'finalizado',
-                    fechaFinalizacion: serverTimestamp()
-                });
-                showNotification(`El frasco de "${cicloName}" fue movido al historial.`);
-            } catch (error) {
-                console.error("Error finalizando el curado:", error);
-                showNotification('Error al finalizar el frasco.', 'error');
-            }
-        });
-    },
     handleWizardStep1Next: async () => {
         const textarea = getEl('wizard-salas-textarea');
         const salaNames = textarea.value.split('\n').map(s => s.trim()).filter(s => s !== '');
@@ -1245,35 +1194,23 @@ handlePhenoCardUpdate: async (e) => {
         currentSalaName = salaName;
         handlers.hideAllViews();
         const view = getEl('ciclosView');
-        // El HTML ahora se genera dentro de esta función, es más limpio
-        view.innerHTML = `
-            <header class="flex justify-between items-center mb-8">
-                <h1 class="text-3xl font-mono tracking-wider font-bold text-amber-400">Sala: ${salaName}</h1>
-                <button id="backToSalasViewBtn" class="btn-secondary btn-base py-2 px-4 rounded-lg">Volver a Salas</button>
-            </header>
-            <main>
-                <div id="ciclosGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
-                <div id="emptyCiclosState" class="text-center py-10 text-gray-500 dark:text-gray-400 hidden">
-                    <p>No hay ciclos en esta sala.</p>
-                </div>
-            </main>
-        `;
         view.classList.remove('hidden');
         view.classList.add('view-container');
 
-        getEl('backToSalasViewBtn').addEventListener('click', handlers.showSalasView);
+        getEl('backToSalasBtn').addEventListener('click', handlers.hideCiclosView);
 
+        getEl('salaNameHeader').innerText = `Sala: ${salaName}`;
         const ciclosGrid = getEl('ciclosGrid');
-        const emptyState = getEl('emptyCiclosState');
+        ciclosGrid.innerHTML = '';
         const ciclosInSala = currentCiclos.filter(c => c.salaId === salaId);
 
         if (ciclosInSala.length > 0) {
-            emptyState.classList.add('hidden');
+            getEl('emptyCiclosState').classList.add('hidden');
             ciclosInSala.forEach(ciclo => {
                 ciclosGrid.appendChild(createCicloCard(ciclo, handlers));
             });
         } else {
-            emptyState.classList.remove('hidden');
+            getEl('emptyCiclosState').classList.remove('hidden');
         }
     },
     hideCiclosView: () => {
@@ -1325,9 +1262,11 @@ handlePhenoCardUpdate: async (e) => {
         detailView.classList.remove('hidden');
         detailView.classList.add('view-container');
 
-        // CORREGIDO: El botón ahora llama directamente a showDashboard.
-        getEl('backToCiclosBtn').addEventListener('click', () => handlers.showDashboard());
-
+        getEl('backToCiclosBtn').addEventListener('click', () => {
+            handlers.hideAllViews();
+            getEl('app').classList.remove('hidden');
+            getEl('app').classList.add('view-container');
+        });
         const addWeekBtn = getEl('add-week-btn');
         if(addWeekBtn) addWeekBtn.addEventListener('click', () => handlers.handleAddWeek(ciclo.id));
         
@@ -1363,29 +1302,32 @@ handlePhenoCardUpdate: async (e) => {
     },
     showToolsView: () => {
         handlers.hideAllViews();
-        const container = getEl('app-content-container');
-        if(!container) return;
+        const toolsView = getEl('toolsView');
+        toolsView.innerHTML = renderToolsView();
+        toolsView.classList.remove('hidden');
+        toolsView.classList.add('view-container');
 
-        getEl('view-title').innerText = 'Herramientas';
-        container.innerHTML = renderToolsView();
+        handlers.switchToolsTab('genetics');
+        handlers.handleViewModeToggle(toolsViewMode, true);
+        
+        startToolsTour();
 
-        getEl('backToDashboardBtn').addEventListener('click', handlers.showDashboard);
-        getEl('add-bulk-btn').addEventListener('click', handlers.openBulkAddModal); // <--- Este es el botón que no funcionaba
+        getEl('backToPanelBtn').addEventListener('click', () => {
+            destroyToolSortables();
+            handlers.hideToolsView();
+        });
+        getEl('add-bulk-btn').addEventListener('click', handlers.openBulkAddModal);
         getEl('add-to-catalog-btn').addEventListener('click', handlers.openAddToCatalogModal);
+        getEl('geneticsTabBtn').addEventListener('click', () => handlers.switchToolsTab('genetics'));
         getEl('geneticsTabBtn').addEventListener('click', () => handlers.switchToolsTab('genetics'));
         getEl('stockTabBtn').addEventListener('click', () => handlers.switchToolsTab('stock'));
         getEl('baulSemillasTabBtn').addEventListener('click', () => handlers.switchToolsTab('baulSemillas'));
-        getEl('curingJarsTabBtn').addEventListener('click', () => handlers.switchToolsTab('curingJars'));
         getEl('phenohuntTabBtn').addEventListener('click', () => handlers.switchToolsTab('phenohunt'));
         getEl('historialTabBtn').addEventListener('click', () => handlers.switchToolsTab('historial'));
         getEl('searchTools').addEventListener('input', handlers.handleToolsSearch);
         getEl('view-mode-card').addEventListener('click', () => handlers.handleViewModeToggle('card'));
         getEl('view-mode-list').addEventListener('click', () => handlers.handleViewModeToggle('list'));
         getEl('exportCsvBtn').addEventListener('click', handlers.handleExportCSV);
-
-        // Cargar la pestaña por defecto
-        handlers.switchToolsTab('genetics');
-        handlers.handleViewModeToggle(toolsViewMode, true);
     },
     hideToolsView: () => {
         const view = getEl('toolsView');
@@ -1395,16 +1337,12 @@ handlePhenoCardUpdate: async (e) => {
     },
     showSettingsView: () => {
         handlers.hideAllViews();
-        const container = getEl('app-content-container');
-        if(!container) return;
+        const settingsView = getEl('settingsView');
+        settingsView.innerHTML = renderSettingsView();
+        settingsView.classList.remove('hidden');
+        settingsView.classList.add('view-container');
 
-        getEl('view-title').innerText = 'Ajustes';
-        container.innerHTML = renderSettingsView();
-
-        // AÑADIDO: Listener para que el botón 'backToDashboardBtn' funcione.
-        getEl('backToDashboardBtn').addEventListener('click', handlers.showDashboard);
-
-        // Re-asignar listeners específicos de la vista de Ajustes
+        getEl('backToPanelFromSettingsBtn').addEventListener('click', handlers.hideSettingsView);
         getEl('changePasswordForm').addEventListener('submit', handlers.handleChangePassword);
         getEl('deleteAccountBtn').addEventListener('click', handlers.handleDeleteAccount);
         handlers.initializeTheme();
@@ -1426,31 +1364,18 @@ handlePhenoCardUpdate: async (e) => {
     },
     switchToolsTab: (newTab) => {
         activeToolsTab = newTab;
-        ['genetics', 'stock', 'baulSemillas', 'curingJars', 'phenohunt', 'historial'].forEach(tab => {
-            const contentEl = getEl(`${tab}Content`);
-            const tabBtnEl = getEl(`${tab}TabBtn`);
-            if (contentEl) contentEl.classList.toggle('hidden', tab !== activeToolsTab);
-            if (tabBtnEl) {
-                tabBtnEl.classList.toggle('border-amber-400', tab === activeToolsTab);
-                tabBtnEl.classList.toggle('border-transparent', tab !== activeToolsTab);
-            }
+        ['genetics', 'stock', 'baulSemillas', 'phenohunt', 'historial'].forEach(tab => {
+            getEl(`${tab}Content`).classList.toggle('hidden', tab !== activeToolsTab);
+            getEl(`${tab}TabBtn`).classList.toggle('border-amber-400', tab === activeToolsTab);
+            getEl(`${tab}TabBtn`).classList.toggle('border-transparent', tab !== activeToolsTab);
         });
 
         const searchTools = getEl('searchTools');
         const viewMode = getEl('view-mode-toggle');
         const exportBtn = getEl('exportCsvBtn');
 
-        searchTools.classList.remove('hidden');
-        viewMode.classList.remove('hidden');
-        exportBtn.classList.remove('hidden');
-        
-        if (newTab === 'curingJars') {
-            searchTools.classList.add('hidden');
-            viewMode.classList.add('hidden');
-            exportBtn.classList.add('hidden');
-            const curingCiclos = currentCiclos.filter(c => c.estado === 'en_curado');
-            renderCuringJarsList(curingCiclos, handlers);
-        } else if (newTab === 'historial') {
+        // Ocultar/mostrar elementos UI según la pestaña
+        if (newTab === 'historial') {
             searchTools.placeholder = 'Buscar por genética, sala...';
             viewMode.classList.add('hidden');
             exportBtn.classList.add('hidden');
@@ -1460,14 +1385,25 @@ handlePhenoCardUpdate: async (e) => {
             viewMode.classList.add('hidden');
             exportBtn.classList.add('hidden');
             renderPhenohuntList(currentPhenohunts, handlers);
-        } else {
-            searchTools.placeholder = 'Buscar por nombre...';
-            if (newTab === 'genetics') renderGeneticsList(currentGenetics, handlers);
-            if (newTab === 'stock') renderStockList(currentGenetics.filter(g => g.cloneStock > 0), handlers);
-            if (newTab === 'baulSemillas') renderBaulSemillasList(currentGenetics.filter(g => g.seedStock > 0), handlers);
         }
-        
-        handlers.handleToolsSearch({ target: { value: '' } });
+        else {
+            searchTools.placeholder = 'Buscar por nombre...';
+            viewMode.classList.remove('hidden'); // Siempre visible para las vistas de inventario
+            exportBtn.classList.remove('hidden'); // Siempre visible para las vistas de inventario
+            
+            // Renderizar la lista correspondiente
+            if (newTab === 'genetics') {
+                renderGeneticsList(currentGenetics, handlers);
+            } else if (newTab === 'stock') {
+                const stockItems = currentGenetics.filter(g => g.cloneStock > 0);
+                renderStockList(stockItems, handlers);
+            } else if (newTab === 'baulSemillas') {
+                const seedItems = currentGenetics.filter(g => g.seedStock > 0);
+                renderBaulSemillasList(seedItems, handlers);
+            }
+        }
+        // NOTA: La búsqueda para la nueva pestaña la implementaremos más adelante si es necesario.
+        handlers.handleToolsSearch({ target: { value: '' } }); // Resetear búsqueda al cambiar de tab
     },
     handleToolsSearch: (e) => {
         const searchTerm = e.target.value.toLowerCase();
@@ -1765,84 +1701,86 @@ handlePhenoCardUpdate: async (e) => {
         uiOpenFinalizarCicloModal(ciclo, PREDEFINED_TAGS, MAX_CUSTOM_TAGS, currentGenetics);
     },
     handleFinalizarCicloFormSubmit: async (e) => {
-    e.preventDefault();
-    const form = e.target;
-    const cicloId = form.dataset.cicloId;
-    const cicloOriginal = (await getDoc(doc(db, `users/${userId}/ciclos`, cicloId))).data();
-    
-    // La recolección de datos del formulario no cambia
-    const pesoSeco = parseFloat(getEl('peso-seco').value);
-    const etiquetasGlobales = Array.from(getEl('global-tags-container').querySelectorAll('.tag.active')).map(t => t.textContent);
-    const etiquetasCustom = Array.from(getEl('custom-tags-container').querySelectorAll('.tag')).map(t => t.textContent.replace(' ×', ''));
-    const feedbackGeneticas = [];
-    document.querySelectorAll('.genetic-feedback-row').forEach(row => {
-        const id = row.dataset.id;
-        const name = row.dataset.name;
-        const decision = row.querySelector('input[name="decision-' + id + '"]:checked')?.value || 'ninguna';
-        const favorita = row.querySelector('.favorite-checkbox').checked;
-        feedbackGeneticas.push({ id, name, decision, favorita });
-    });
-
-    // La consolidación de datos (snapshot) tampoco cambia
-    const snapshot_genetics = [];
-    if (cicloOriginal.genetics && cicloOriginal.genetics.length > 0) {
-        cicloOriginal.genetics.forEach(cicloGenetic => {
-            const fullGeneticData = currentGenetics.find(g => g.id === cicloGenetic.id);
-            if (fullGeneticData) {
-                snapshot_genetics.push({
-                    id: fullGeneticData.id,
-                    name: fullGeneticData.name,
-                    phenoName: cicloGenetic.name,
-                    bank: fullGeneticData.bank || null,
-                    parents: fullGeneticData.parents || null,
-                    owner: fullGeneticData.owner || null,
-                });
-            } else {
-                snapshot_genetics.push({ id: cicloGenetic.id, name: cicloGenetic.name, phenoName: cicloGenetic.name, bank: 'Dato no disponible', parents: null, owner: null });
-            }
-        });
-    }
-
-    const diasDeSecado = cicloOriginal.fechaInicioSecado ? calculateDaysBetween(cicloOriginal.fechaInicioSecado, new Date()) : 0;
-    const diasDeFlora = calculateDaysSince(cicloOriginal.floweringStartDate);
-
-    // --- ▼▼▼ AQUÍ ESTÁ EL CAMBIO PRINCIPAL ▼▼▼ ---
-    const cosechaData = {
-        estado: 'en_curado', // Cambiamos el estado
-        fechaInicioCurado: serverTimestamp(), // Añadimos la fecha de inicio de curado
-        pesoSeco: isNaN(pesoSeco) ? 0 : pesoSeco,
-        diasDeFlora,
-        diasDeSecado,
-        etiquetasGlobales,
-        etiquetasCustom,
-        feedbackGeneticas,
-        snapshot_genetics
-        // El campo 'fechaFinalizacion' ya no se establece aquí
-    };
-    // --- ▲▲▲ FIN DEL CAMBIO ▲▲▲ ---
-
-    try {
-        const batch = writeBatch(db);
-        const cicloRef = doc(db, `users/${userId}/ciclos`, cicloId);
-        batch.update(cicloRef, cosechaData);
-        
-        for (const feedback of feedbackGeneticas) {
-            const geneticRef = doc(db, `users/${userId}/genetics`, feedback.id);
-            const originalGenetic = currentGenetics.find(g => g.id === feedback.id);
-            if (originalGenetic && originalGenetic.favorita !== feedback.favorita) {
-                batch.update(geneticRef, { favorita: feedback.favorita });
-            }
+        e.preventDefault();
+        const form = e.target;
+        const cicloId = form.dataset.cicloId;
+        const cicloOriginal = currentCiclos.find(c => c.id === cicloId);
+        if (!cicloOriginal) {
+            showNotification('No se encontró el ciclo original.', 'error');
+            return;
         }
+
+        // 1. Recolectar datos del formulario
+        const pesoSeco = parseFloat(getEl('peso-seco').value);
+        const etiquetasGlobales = Array.from(getEl('global-tags-container').querySelectorAll('.tag.active')).map(t => t.textContent);
+        const etiquetasCustom = Array.from(getEl('custom-tags-container').querySelectorAll('.tag')).map(t => t.textContent.replace(' ×', ''));
         
-        await batch.commit();
-        // Actualizamos el mensaje para reflejar el nuevo estado
-        showNotification('¡Cosecha enfrascada! Ahora podés seguir su curado desde Herramientas.');
-        getEl('finalizarCicloModal').style.display = 'none';
-    } catch(error) {
-        console.error("Error guardando la cosecha para curado: ", error);
-        showNotification('Error al iniciar el proceso de curado.', 'error');
-    }
-},
+        const feedbackGeneticas = [];
+        document.querySelectorAll('.genetic-feedback-row').forEach(row => {
+            const id = row.dataset.id;
+            const name = row.dataset.name;
+            const decision = row.querySelector('input[name="decision-' + id + '"]:checked')?.value || 'ninguna';
+            const favorita = row.querySelector('.favorite-checkbox').checked;
+            feedbackGeneticas.push({ id, name, decision, favorita });
+        });
+
+        // 2. Preparar los datos para las dos operaciones
+        const fechaFinal = new Date();
+        const diasDeSecado = cicloOriginal.fechaInicioSecado ? calculateDaysBetween(cicloOriginal.fechaInicioSecado.toDate(), fechaFinal) : 0;
+        const diasDeFlora = calculateDaysSince(cicloOriginal.floweringStartDate);
+
+        // Datos para actualizar el CICLO y mandarlo al HISTORIAL
+        const cosechaData = {
+            estado: 'finalizado',
+            fechaFinalizacion: fechaFinal,
+            pesoSeco: isNaN(pesoSeco) ? 0 : pesoSeco,
+            diasDeFlora,
+            diasDeSecado,
+            etiquetasGlobales,
+            etiquetasCustom,
+            feedbackGeneticas
+        };
+        
+        // Datos para crear el nuevo FRASCO en el inventario de CURADO
+        const geneticaPrincipal = cicloOriginal.genetics && cicloOriginal.genetics.length > 0 ? cicloOriginal.genetics[0].name : 'Varias';
+        const frascoData = {
+            nombreCosecha: cicloOriginal.name,
+            geneticaPrincipal: geneticaPrincipal,
+            fechaEnfrascado: fechaFinal,
+            cicloId: cicloId,
+            userId: userId
+        };
+
+        try {
+            // 3. Ejecutar todo en un batch atómico
+            const batch = writeBatch(db);
+
+            // Operación 1: Actualizar el ciclo a 'finalizado'
+            const cicloRef = doc(db, `users/${userId}/ciclos`, cicloId);
+            batch.update(cicloRef, cosechaData);
+            
+            // Operación 2: Crear el nuevo frasco
+            const newFrascoRef = doc(collection(db, `users/${userId}/frascos`));
+            batch.set(newFrascoRef, frascoData);
+
+            // Operación 3 (opcional): Actualizar genéticas favoritas
+            for (const feedback of feedbackGeneticas) {
+                const geneticRef = doc(db, `users/${userId}/genetics`, feedback.id);
+                const originalGenetic = currentGenetics.find(g => g.id === feedback.id);
+                if (originalGenetic && originalGenetic.favorita !== feedback.favorita) {
+                    batch.update(geneticRef, { favorita: feedback.favorita });
+                }
+            }
+            
+            await batch.commit();
+            showNotification('¡Cosecha guardada en el historial y frasco añadido al inventario!');
+            getEl('finalizarCicloModal').style.display = 'none';
+
+        } catch(error) {
+            console.error("Error guardando la cosecha y creando el frasco: ", error);
+            showNotification('Error al finalizar la cosecha.', 'error');
+        }
+    },
     handleAddWeek: async (cicloId) => {
         try {
             const cicloRef = doc(db, `users/${userId}/ciclos`, cicloId);
@@ -1970,85 +1908,70 @@ handlePhenoCardUpdate: async (e) => {
         }
     }
 };
-function initializeAppUI(user) {
-    // Esta función se llama UNA SOLA VEZ al iniciar sesión.
-    // Muestra el esqueleto de la app, renderiza el header y le asigna sus listeners.
-    getEl('app-shell').classList.remove('hidden');
-    renderHeader(user);
 
-    // Asignar listeners al header persistente
-    getEl('logoutBtn').addEventListener('click', () => handlers.signOut());
-    getEl('menuBtn').addEventListener('click', (e) => { e.stopPropagation(); getEl('dropdownMenu').classList.toggle('hidden'); });
-    getEl('aboutBtn').addEventListener('click', () => getEl('aboutModal').style.display = 'flex');
-    
-    // Listeners de navegación del menú
-    getEl('menuDashboard').addEventListener('click', (e) => { e.preventDefault(); handlers.showDashboard(); getEl('dropdownMenu').classList.add('hidden'); });
-    getEl('menuSalas').addEventListener('click', (e) => { e.preventDefault(); handlers.showSalasView(); getEl('dropdownMenu').classList.add('hidden'); });
-    getEl('menuTools').addEventListener('click', (e) => { e.preventDefault(); handlers.showToolsView(); getEl('dropdownMenu').classList.add('hidden'); });
-    getEl('menuSettings').addEventListener('click', (e) => { e.preventDefault(); handlers.showSettingsView(); getEl('dropdownMenu').classList.add('hidden'); });
-}
-onAuthStateChanged(auth, async user => {
-    console.log("Checkpoint 1: onAuthStateChanged se ha disparado.");
+onAuthStateChanged(auth, async user => { // Convertimos la función en async
     getEl('initial-loader').classList.add('hidden');
-    
-    // Limpiar vistas anteriores
-    getEl('authView').classList.add('hidden');
-    getEl('app-shell').classList.add('hidden');
-
     if (user) {
-        console.log("Checkpoint 2: Usuario detectado. Entrando al bloque 'if (user)'.");
-        
         userId = user.uid;
+
+        // --- INICIO DEL BLOQUE DE MIGRACIÓN ---
+        // Mostramos el loader de nuevo mientras se ejecuta la posible migración
+        getEl('initial-loader').classList.remove('hidden'); 
+        
         await runDataMigration(user.uid);
-
-        // 1. Carga inicial de datos (esperamos a que termine)
-        console.log("Checkpoint 3: Iniciando carga de datos desde Firestore...");
         
-        const ciclosQuery = query(collection(db, `users/${userId}/ciclos`));
-        const geneticsQuery = query(collection(db, `users/${userId}/genetics`));
-        const salasQuery = query(collection(db, `users/${userId}/salas`));
-        
-        console.log("Cargando datos iniciales desde Firestore...");
-        const [ciclosSnapshot, geneticsSnapshot, salasSnapshot] = await Promise.all([
-            getDocs(ciclosQuery), getDocs(geneticsQuery), getDocs(salasQuery)
-        ]);
-        console.log("Checkpoint 4: Carga de datos completada.");
-        currentCiclos = ciclosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter(c => c.estado !== 'finalizado');
-        currentGenetics = geneticsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        currentSalas = salasSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        console.log("Datos de ciclos cargados:", currentCiclos); // DEBUG: Para verificar los datos
+        // Ocultamos el loader una vez que la migración ha terminado
+        getEl('initial-loader').classList.add('hidden');
+        // --- FIN DEL BLOQUE DE MIGRACIÓN ---
 
-        // 2. Inicializar la UI persistente (header)
-        initializeAppUI(user);
-        console.log("Checkpoint 5: UI del cascarón de la app inicializada.")
-        // 3. Mostrar la vista inicial (Dashboard)
-        handlers.showDashboard();
-        console.log("Checkpoint 6: Dashboard renderizado.");
+        handlers.hideAllViews();
+        const appView = getEl('app');
+        appView.classList.remove('hidden');
+        appView.classList.add('view-container');
+        getEl('welcomeUser').innerText = `Anota todo, no seas pancho.`;
 
-        // 4. Activar listeners para actualizaciones en tiempo real
-        loadCiclos(); loadSalas(); loadGenetics(); loadPhenohunts(); loadHistorial();
+        // Ahora, cargamos los datos ya migrados/unificados
+        loadSalas();
+        loadCiclos();
+        loadGenetics(); // Este ahora contiene las semillas también
+        loadFrascos();
+        // loadSeeds(); // Esta función ya no es necesaria
+        loadPhenohunts();
+        loadHistorial();
+        initializeEventListeners(handlers);
+        window.addEventListener('click', (e) => {
+            if (!e.target.closest('.ciclo-item-container')) {
+                document.querySelectorAll('.ciclo-actions-menu').forEach(menu => {
+                    menu.classList.add('hidden');
+                });
+            }
+        });
 
-        // 5. Inicializar listeners globales (modales, etc.)
-        initializeEventListeners(handlers); 
+        getEl('searchSalas').addEventListener('input', e => {
+            const searchTerm = e.target.value.toLowerCase();
+            const filteredSalas = currentSalas.filter(sala => sala.name.toLowerCase().includes(searchTerm));
+            if (sortableSalas) sortableSalas.destroy();
+            renderSalasGrid(filteredSalas, currentCiclos, handlers);
+            initializeDragAndDrop();
+        });
 
-        // 6. Activar Tour
-        if (!localStorage.getItem('segcul_tour_v1_completed')) {
-            startMainTour();
-            localStorage.setItem('segcul_tour_v1_completed', 'true');
-        }
-        console.log("Checkpoint 7: ¡Inicialización completa!");
     } else {
-        // Lógica para cuando el usuario no está logueado
-        console.log("Checkpoint 8: No se detectó usuario. Mostrando vista de autenticación.");
-        
         userId = null;
-        if (salasUnsubscribe) salasUnsubscribe(); // Detener listeners
-        // ...
-        getEl('authView').classList.remove('hidden');
+        if (salasUnsubscribe) salasUnsubscribe();
+        if (ciclosUnsubscribe) ciclosUnsubscribe();
+        if (geneticsUnsubscribe) geneticsUnsubscribe();
+        if (seedsUnsubscribe) seedsUnsubscribe(); // Aún es bueno limpiarlo en logout
+        if (phenohuntUnsubscribe) phenohuntUnsubscribe();
+        if (frascosUnsubscribe) frascosUnsubscribe(); 
+        if (historialUnsubscribe) historialUnsubscribe();
+
+        handlers.hideAllViews();
+        const authView = getEl('authView');
+        authView.classList.remove('hidden');
+        authView.classList.add('view-container');
         initializeEventListeners(handlers);
     }
 });
-
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/service-worker.js')

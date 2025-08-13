@@ -16,129 +16,6 @@ const FERTILIZER_LINES = {
     "Personalizada": []
 };
 
-export function renderHeader(user) {
-    const headerContainer = getEl('app-header');
-    if (!headerContainer) return;
-
-    const welcomeMsg = `Bienvenido de nuevo, @${user.email.split('@')[0]}`;
-
-    headerContainer.innerHTML = `
-        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-start sm:items-center">
-            <div>
-                <h1 id="view-title" class="text-3xl font-bold text-amber-400 font-mono tracking-wider"></h1>
-                <p id="welcomeUser" class="text-gray-500 dark:text-gray-400 mt-1">${welcomeMsg}</p>
-            </div>
-            <div class="relative mt-4 sm:mt-0 self-end sm:self-auto flex items-center gap-3">
-                <button id="aboutBtn" class="btn-secondary btn-base py-2 px-4 rounded-lg">¿Qué onda esto?</button>
-                <button id="menuBtn" class="btn-primary btn-base p-2 rounded-lg" title="Menú">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" /></svg>
-                </button>
-                <div id="dropdownMenu" class="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-[#262626] border border-gray-200 dark:border-[#404040] rounded-md shadow-lg z-20 hidden">
-                    <a href="#" id="menuDashboard" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#404040]">Panel Principal</a>
-                    <a href="#" id="menuSalas" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#404040]">Ver Salas</a>
-                    <a href="#" id="menuTools" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#404040]">Herramientas</a>
-                    <a href="#" id="menuSettings" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#404040]">Ajustes</a>
-                    <a href="#" id="logoutBtn" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#404040]">Cerrar Sesión</a>
-                </div>
-            </div>
-        </div>`;
-}
-
-// FUNCIÓN MODIFICADA: Renderiza solo el contenido del dashboard
-export function renderDashboard(statsData, recentActivity, curingJars) {
-    const container = getEl('app-content-container');
-    if (!container) return;
-    
-    getEl('view-title').innerText = 'Panel Principal';
-
-    const getTimeElapsed = (startDate) => {
-        if (!startDate || !startDate.toDate) return 'Fecha inválida';
-        const start = startDate.toDate();
-        const now = new Date();
-        const diffTime = Math.abs(now - start);
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        if (diffDays <= 1) return '1 día';
-        if (diffDays < 7) return `${diffDays} días`;
-        if (diffDays < 30) return `${Math.floor(diffDays / 7)} sem`;
-        return `${Math.floor(diffDays / 30)} mes(es)`;
-    };
-
-    const recentActivityHTML = recentActivity.length > 0 ? recentActivity.map(item => `
-        <li class="flex items-start">
-            <span class="text-xl mt-1">${item.icon}</span>
-            <div class="ml-3 text-sm">
-                <p class="font-medium text-gray-800 dark:text-gray-200">${item.description}</p>
-                <p class="text-xs text-gray-500 dark:text-gray-400">en "${item.cicloName}" (${item.timeAgo})</p>
-            </div>
-        </li>
-    `).join('') : '<p class="text-xs text-gray-500 dark:text-gray-400">No hay actividad reciente.</p>';
-    
-    const curingJarsHTML = curingJars.length > 0 ? curingJars.map(jar => `
-        <div>
-            <div class="flex justify-between items-center text-sm mb-2">
-                <span class="font-semibold text-gray-800 dark:text-gray-200">${jar.name}</span>
-                <span class="font-mono font-semibold text-amber-400">${getTimeElapsed(jar.fechaInicioCurado)}</span>
-            </div>
-            <div class="flex w-full h-2 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700">
-                <div class="w-1/3 bg-amber-400 opacity-40" title="Etapa Inicial"></div>
-                <div class="w-1/3 bg-emerald-400 opacity-100" title="Etapa Óptima"></div>
-                <div class="w-1/3 bg-violet-400 opacity-40" title="Etapa Extendida"></div>
-            </div>
-        </div>
-    `).join('') : '<p class="text-xs text-gray-500 dark:text-gray-400">No hay frascos en curado.</p>';
-
-    container.innerHTML = `
-        <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div class="lg:col-span-1 space-y-6">
-                <div class="card rounded-xl p-6">
-                    <h2 class="text-xl font-bold text-amber-400 mb-1">Mi Cultivo</h2>
-                    <a href="#" id="navigateToSalas" class="text-sm text-amber-400 hover:underline mb-4 block">Ver todas las salas →</a>
-                    <div id="stats-carousel" class="space-y-4 mb-6 h-36"></div>
-                    <h3 class="font-semibold text-gray-800 dark:text-gray-200 mb-3 border-t border-gray-200 dark:border-gray-700 pt-4">Actividad Reciente</h3>
-                    <ul class="space-y-4">${recentActivityHTML}</ul>
-                </div>
-                <div class="card rounded-xl p-6">
-                    <h2 class="text-xl font-bold text-amber-400 mb-4">Mis Frascos en Curado</h2>
-                    <div class="space-y-5">${curingJarsHTML}</div>
-                </div>
-            </div>
-            <div class="card rounded-xl p-6 lg:col-span-2">
-                <h2 class="text-xl font-bold text-amber-400 mb-4">Comunidad</h2>
-                <div class="h-full flex items-center justify-center text-center text-gray-500 dark:text-gray-400"><p><strong>Próximamente:</strong> Un espacio para compartir tus cosechas y aprender de otros cultivadores.</p></div>
-            </div>
-        </div>`;
-    
-    initializeDashboardStatsCarousel(statsData);
-}
-export function initializeDashboardStatsCarousel(statsData) {
-    const statsContainer = getEl('stats-carousel');
-    if (statsContainer && statsData && statsData.length > 0) {
-        let currentStatIndex = 0;
-        const createStatCardHTML = (stat) => `
-            <div class="stat-card flex items-center p-3 bg-gray-100 dark:bg-gray-800/50 rounded-lg" style="opacity: 0; transition: opacity 0.5s ease-in-out;">
-                <div class="p-2 bg-${stat.color}-500/20 rounded-md">
-                    ${stat.icon}
-                </div>
-                <div class="ml-4">
-                    <p class="text-sm text-gray-500 dark:text-gray-400">${stat.label}</p>
-                    <p class="text-2xl font-bold font-mono text-gray-800 dark:text-gray-100">${stat.value}</p>
-                </div>
-            </div>`;
-
-        const updateStats = () => {
-            const safeStats = statsData.length > 1 ? statsData : [statsData[0], statsData[0]];
-            const stat1 = safeStats[currentStatIndex % safeStats.length];
-            const stat2 = safeStats[(currentStatIndex + 1) % safeStats.length];
-            statsContainer.innerHTML = createStatCardHTML(stat1) + createStatCardHTML(stat2);
-            setTimeout(() => {
-                statsContainer.querySelectorAll('.stat-card').forEach(card => card.style.opacity = '1');
-            }, 100);
-            currentStatIndex = (currentStatIndex + 2) % safeStats.length;
-        };
-        updateStats();
-        setInterval(updateStats, 5000);
-    }
-}
 function createTooltipIcon(title) {
     return `
         <span class="tooltip-trigger inline-flex items-center justify-center" data-tippy-content="${title}">
@@ -318,10 +195,10 @@ export function openCicloModal(ciclo = null, salas = [], preselectedSalaId = nul
     initializeTooltips();
 }
 export function openAddToCatalogModal(handlers) {
-    const modal = getEl('addToCatalogModal');
+    const modal = getEl('cicloModal'); // Reutilizamos un modal existente para mostrarlo
     
     const modalContent = `
-        <div class="w-11/12 md:w-full max-w-lg p-6 rounded-lg shadow-lg bg-white dark:bg-gray-800 border dark:border-gray-700">
+        <div class="w-11/12 md:w-full max-w-lg p-6 rounded-lg shadow-lg">
             <h2 class="text-2xl font-bold mb-6 text-amber-400">Añadir al Catálogo</h2>
             
             <div id="catalog-choice-container">
@@ -335,9 +212,6 @@ export function openAddToCatalogModal(handlers) {
                         🧬
                         <span>Nuevo Clon (Cut)</span>
                     </button>
-                </div>
-                 <div class="text-center mt-6">
-                    <button type="button" class="btn-secondary btn-base py-2 px-4 rounded-lg cancel-add-btn">Cancelar</button>
                 </div>
             </div>
 
@@ -368,6 +242,7 @@ export function openAddToCatalogModal(handlers) {
     modal.innerHTML = modalContent;
     modal.style.display = 'flex';
 
+    // Lógica interna del modal
     const choiceContainer = getEl('catalog-choice-container');
     const addSeedsForm = getEl('addSeedsForm');
     const addCloneForm = getEl('addCloneForm');
@@ -969,9 +844,9 @@ export function renderCicloDetails(ciclo, handlers) {
 
 export function renderToolsView() {
     const html = `
-        <header class="flex justify-between items-center mb-4">
+        <header class="flex justify-between items-center mb-8">
             <h1 class="text-3xl font-bold text-amber-400 font-mono tracking-wider">Herramientas</h1>
-            <button id="backToDashboardBtn" class="btn-secondary btn-base py-2 px-4 rounded-lg">Volver al Panel</button>
+            <button id="backToPanelBtn" class="btn-secondary btn-base py-2 px-4 rounded-lg">Volver al Panel</button>
         </header>
         <div class="mb-6 border-b border-gray-300 dark:border-gray-700">
             <nav class="flex space-x-4 sm:space-x-8 overflow-x-auto" aria-label="Tabs">
@@ -979,14 +854,10 @@ export function renderToolsView() {
                 <button id="stockTabBtn" class="py-4 px-1 border-b-2 font-medium text-lg text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:border-gray-400 dark:hover:border-gray-300 whitespace-nowrap btn-base">Stock Clones</button>
                 <button id="baulSemillasTabBtn" class="py-4 px-1 border-b-2 font-medium text-lg text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:border-gray-400 dark:hover:border-gray-300 whitespace-nowrap btn-base">Baúl de Semillas</button>
                 <button id="phenohuntTabBtn" class="py-4 px-1 border-b-2 font-medium text-lg text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:border-gray-400 dark:hover:border-gray-300 whitespace-nowrap btn-base">Phenohunting</button>
-                <button id="curingJarsTabBtn" class="py-4 px-1 border-b-2 font-medium text-lg text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:border-gray-400 dark:hover:border-gray-300 whitespace-nowrap btn-base">Frascos en Curado</button>
                 <button id="historialTabBtn" class="py-4 px-1 border-b-2 font-medium text-lg text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:border-gray-400 dark:hover:border-gray-300 whitespace-nowrap btn-base">Historial</button>
             </nav>
         </div>
-        <div id="curingJarsContent" class="hidden">
-            <div id="curingJarsList" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"></div>
-        </div>
-
+        
         <div class="flex flex-col sm:flex-row items-center justify-between my-4 gap-4">
             <input type="search" id="searchTools" placeholder="Buscar..." class="w-full sm:w-auto sm:max-w-xs p-2 rounded-md focus:ring-amber-500 focus:border-amber-500">
             <div class="flex items-center gap-2">
@@ -1047,7 +918,7 @@ export function renderSettingsView() {
     const html = `
         <header class="flex justify-between items-center mb-8">
             <h1 class="text-3xl font-bold text-amber-400 font-mono tracking-wider">Ajustes</h1>
-            <button id="backToDashboardBtn" class="btn-secondary btn-base py-2 px-4 rounded-lg">Volver al Panel</button>
+            <button id="backToPanelFromSettingsBtn" class="btn-secondary btn-base py-2 px-4 rounded-lg">Volver al Panel</button>
         </header>
         <div class="max-w-2xl mx-auto space-y-8">
             <div class="card p-6">
@@ -1213,14 +1084,14 @@ export function createLogEntry(log, ciclo, handlers) {
 
 export function renderSalasGrid(salas, ciclos, handlers) {
     const salasGrid = getEl('salasGrid');
-    if (!salasGrid) return; 
-
+    if (!salasGrid) return;
+    getEl('loadingSalas').style.display = 'none';
     salasGrid.innerHTML = '';
-
     if (salas.length === 0) {
-        salasGrid.innerHTML = `<p class="text-center text-gray-500 dark:text-gray-400 col-span-full py-8">No tienes salas. ¡Añade una para empezar!</p>`;
+        getEl('emptySalasState').style.display = 'block';
         return;
     }
+    getEl('emptySalasState').style.display = 'none';
 
     salas.sort((a, b) => (a.position || 0) - (b.position || 0));
 
@@ -1259,7 +1130,10 @@ export function renderSalasGrid(salas, ciclos, handlers) {
                     }
                 }
 
-                cicloLink.innerHTML = `<div class="ciclo-status-dot ${phaseClass}"></div><span class="ciclo-name">${ciclo.name}</span>`;
+                cicloLink.innerHTML = `
+                    <div class="ciclo-status-dot ${phaseClass}"></div>
+                    <span class="ciclo-name">${ciclo.name}</span>
+                `;
 
                 const actionsButton = document.createElement('button');
                 actionsButton.className = 'btn-base p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600';
@@ -1317,10 +1191,22 @@ export function renderSalasGrid(salas, ciclos, handlers) {
             </div>
         `;
         salaCard.querySelector('.flex-grow.relative').appendChild(ciclosPreviewContainer);
-        salaCard.querySelector('[data-action="open-sala"]').addEventListener('click', (e) => handlers.showCiclosView(sala.id, sala.name));
-        salaCard.querySelector('[data-action="edit-sala"]').addEventListener('click', (e) => { e.stopPropagation(); handlers.openSalaModal(sala); });
-        salaCard.querySelector('[data-action="delete-sala"]').addEventListener('click', (e) => { e.stopPropagation(); handlers.deleteSala(sala.id, sala.name); });
-        salaCard.querySelector('[data-action="quick-add-ciclo"]').addEventListener('click', (e) => { e.stopPropagation(); handlers.openCicloModal(null, salas, e.currentTarget.dataset.salaId, handlers);});
+
+        salaCard.querySelector('[data-action="open-sala"]').addEventListener('click', (e) => {
+            handlers.showCiclosView(sala.id, sala.name);
+        });
+        salaCard.querySelector('[data-action="edit-sala"]').addEventListener('click', (e) => {
+            e.stopPropagation();
+            handlers.openSalaModal(sala);
+        });
+        salaCard.querySelector('[data-action="delete-sala"]').addEventListener('click', (e) => {
+            e.stopPropagation();
+            handlers.deleteSala(sala.id, sala.name);
+        });
+        salaCard.querySelector('[data-action="quick-add-ciclo"]').addEventListener('click', (e) => {
+            e.stopPropagation();
+            handlers.openCicloModal(null, null, e.currentTarget.dataset.salaId, handlers);
+        });
         salasGrid.appendChild(salaCard);
     });
     initializeTooltips();
@@ -1702,41 +1588,53 @@ export function openFinalizarCicloModal(ciclo, predefinedTags, maxCustomTags, al
 }
 
 export function initializeEventListeners(handlers) {
-    // Mantenemos los listeners de los formularios de autenticación
-    const loginForm = getEl('loginForm');
-    if (loginForm) {
-        loginForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            handlers.handleLogin(getEl('login-email').value, getEl('login-password').value);
-        });
-    }
-    const registerForm = getEl('registerForm');
-    if (registerForm) {
-        registerForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            handlers.handleRegister(getEl('register-email').value, getEl('register-password').value);
-        });
-    }
-    const showRegister = getEl('showRegister');
-    if (showRegister) {
-        showRegister.addEventListener('click', (e) => {
-            e.preventDefault();
-            getEl('loginForm').classList.add('hidden');
-            getEl('registerForm').classList.remove('hidden');
-            getEl('authError').classList.add('hidden');
-        });
-    }
-    const showLogin = getEl('showLogin');
-    if (showLogin) {
-        showLogin.addEventListener('click', (e) => {
-            e.preventDefault();
-            getEl('registerForm').classList.add('hidden');
-            getEl('loginForm').classList.remove('hidden');
-            getEl('authError').classList.add('hidden');
-        });
-    }
+    getEl('loginForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        handlers.handleLogin(getEl('login-email').value, getEl('login-password').value);
+    });
+    getEl('registerForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        handlers.handleRegister(getEl('register-email').value, getEl('register-password').value);
+    });
+    getEl('showRegister').addEventListener('click', (e) => {
+        e.preventDefault();
+        getEl('loginForm').classList.add('hidden');
+        getEl('registerForm').classList.remove('hidden');
+        getEl('authError').classList.add('hidden');
+    });
+    getEl('showLogin').addEventListener('click', (e) => {
+        e.preventDefault();
+        getEl('registerForm').classList.add('hidden');
+        getEl('loginForm').classList.remove('hidden');
+        getEl('authError').classList.add('hidden');
+    });
+    getEl('aboutBtnAuth').addEventListener('click', () => getEl('aboutModal').style.display = 'flex');
+    getEl('aboutBtnAuthRegister').addEventListener('click', () => getEl('aboutModal').style.display = 'flex');
+    getEl('logoutBtn').addEventListener('click', () => handlers.signOut());
+    getEl('menuBtn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        getEl('dropdownMenu').classList.toggle('hidden');
+    });
+    window.addEventListener('click', (e) => {
+        const menuBtn = getEl('menuBtn');
+        const dropdownMenu = getEl('dropdownMenu');
+        if (menuBtn && dropdownMenu && !menuBtn.contains(e.target) && !dropdownMenu.contains(e.target)) {
+            dropdownMenu.classList.add('hidden');
+        }
+    });
+    getEl('aboutBtn').addEventListener('click', () => getEl('aboutModal').style.display = 'flex');
     
-    // Mantenemos los listeners para cerrar los modales, que son globales
+    const menuAddSalaLink = getEl('menuAddSala');
+    menuAddSalaLink.innerHTML = "Añadir Sala " + createTooltipIcon("Una Sala es tu espacio físico de cultivo, como una carpa o un indoor. Dentro de las salas organizarás tus Ciclos.");
+    menuAddSalaLink.addEventListener('click', (e) => { e.preventDefault(); handlers.openSalaModal(); getEl('dropdownMenu').classList.add('hidden'); });
+    
+    getEl('menuAddCiclo').addEventListener('click', (e) => { e.preventDefault(); handlers.openCicloModal(null, null, null, handlers); getEl('dropdownMenu').classList.add('hidden'); });
+    getEl('menuCurado').textContent = 'Frascos en Curado'; 
+    getEl('menuCurado').addEventListener('click', (e) => { e.preventDefault(); handlers.handleOpenCuradoModal(); getEl('dropdownMenu').classList.add('hidden'); });
+    getEl('menuSetupWizard').addEventListener('click', (e) => { e.preventDefault(); handlers.openSetupWizard(); getEl('dropdownMenu').classList.add('hidden'); });
+    getEl('menuTools').addEventListener('click', (e) => { e.preventDefault(); handlers.showToolsView(); getEl('dropdownMenu').classList.add('hidden'); });
+    getEl('menuSettings').addEventListener('click', (e) => { e.preventDefault(); handlers.showSettingsView(); getEl('dropdownMenu').classList.add('hidden'); });
+    
     document.body.addEventListener('click', (e) => {
         if (e.target.closest('#cancelSalaBtn')) getEl('salaModal').style.display = 'none';
         if (e.target.closest('#cancelCicloBtn')) getEl('cicloModal').style.display = 'none';
@@ -1751,22 +1649,31 @@ export function initializeEventListeners(handlers) {
             handlers.hideConfirmationModal();
         }
         if (e.target.closest('#cancelFinalizarBtn')) getEl('finalizarCicloModal').style.display = 'none';
-        if (e.target.closest('#cancelBulkAddBtn')) getEl('bulkAddModal').style.display = 'none';
-        if (e.target.closest('#cancelWizardBtn')) getEl('setupWizardModal').style.display = 'none';
     });
 
-    // Mantenemos los listeners de los formularios de los modales
     document.body.addEventListener('submit', (e) => {
         if (e.target.id === 'salaForm') handlers.handleSalaFormSubmit(e);
         if (e.target.id === 'cicloForm') handlers.handleCicloFormSubmit(e);
         if (e.target.id === 'logForm') handlers.handleLogFormSubmit(e);
         if (e.target.id === 'moveCicloForm') handlers.handleMoveCicloSubmit(e);
-        // ... y el resto de tus listeners de formularios ...
+        if (e.target.id === 'germinateSeedForm') handlers.handleGerminateFormSubmit(e);
+        if (e.target.id === 'seedForm') handlers.handleSeedFormSubmit(e);
+        if (e.target.id === 'phenoEditForm') {
+            const huntId = getEl('phenohuntDetailView').querySelector('[data-hunt-id]').dataset.huntId;
+            e.target.dataset.huntId = huntId;
+            handlers.handlePhenoCardUpdate(e);
+        }
+        if (e.target.id === 'finalizarCicloForm') handlers.handleFinalizarCicloFormSubmit(e);
+
+        // --- BLOQUE AÑADIDO ---
+        if (e.target.id === 'promoteToGeneticForm') {
+            const huntId = getEl('phenohuntDetailView').querySelector('[data-hunt-id]').dataset.huntId;
+            e.target.dataset.huntId = huntId;
+            handlers.handlePromoteToGenetic(e);
+        }
+        // ----------------------
     });
     
-    // SE HAN ELIMINADO LOS LISTENERS PARA #menuBtn, #logoutBtn, #menuTools, etc.
-    // Su única responsabilidad ahora es de la función showDashboard.
-
     initializeTooltips();
 }
 
@@ -2204,109 +2111,73 @@ export function renderWizardCicloRow(ciclo = {}, allSalas = []) {
     `;
     container.appendChild(row);
 }
+export function openCuradoModal(frascos, handlers) {
+    const modal = getEl('curadoModal');
 
-export function renderCuringJarsList(curingCiclos, handlers) {
-    const listContainer = getEl('curingJarsList');
-    if (!listContainer) return;
-
-    listContainer.innerHTML = '';
-
-    if (curingCiclos.length === 0) {
-        listContainer.innerHTML = `<p class="text-center text-gray-500 dark:text-gray-400 col-span-full">No tenés ninguna cosecha en proceso de curado.</p>`;
-        return;
-    }
-
-    const getTimeElapsed = (startDate) => {
-        if (!startDate) return 'Fecha inválida';
-        const start = startDate.toDate();
-        const now = new Date();
-        const diffTime = Math.abs(now - start);
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        if (diffDays <= 1) return '1 día';
-        if (diffDays < 7) return `${diffDays} días`;
-        if (diffDays < 30) return `${Math.floor(diffDays / 7)} semana(s)`;
-        return `${Math.floor(diffDays / 30)} mes(es)`;
+    // Función interna para obtener el estadio y color del curado
+    const getCuradoStage = (days) => {
+        if (days <= 14) {
+            return { text: 'Curado Inicial', colorClass: 'bg-sky-500' };
+        } else if (days <= 42) {
+            return { text: 'Curado Óptimo', colorClass: 'bg-amber-500' };
+        } else {
+            return { text: 'Curado Extendido', colorClass: 'bg-purple-600' };
+        }
     };
 
-    curingCiclos.forEach(ciclo => {
-        const card = document.createElement('div');
-        card.className = 'card p-4 flex flex-col justify-between';
-        const geneticsNames = ciclo.snapshot_genetics.map(g => g.phenoName || g.name).join(', ');
-
-        card.innerHTML = `
-            <div>
-                <h3 class="font-bold text-lg text-amber-400">${ciclo.name}</h3>
-                <p class="text-sm text-gray-500 dark:text-gray-400 truncate" title="${geneticsNames}">${geneticsNames}</p>
-                <div class="flex justify-between items-baseline mt-3 font-mono">
-                    <span class="text-2xl font-bold text-gray-700 dark:text-gray-200">${ciclo.pesoSeco || 0}g</span>
-                    <span class="text-sm text-amber-400">en curado hace ${getTimeElapsed(ciclo.fechaInicioCurado)}</span>
-                </div>
-            </div>
-            <div class="mt-4">
-                {/* ▼▼▼ TEXTO DEL BOTÓN ACTUALIZADO ▼▼▼ */}
-                <button data-id="${ciclo.id}" class="btn-primary btn-base w-full font-semibold py-2 px-3 rounded-lg text-sm finish-curing-btn">
-                    Dar por Finalizado
-                </button>
-            </div>
-        `;
-        listContainer.appendChild(card);
-    });
-
-    listContainer.querySelectorAll('.finish-curing-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const cicloId = e.currentTarget.dataset.id;
-            const cicloName = curingCiclos.find(c => c.id === cicloId)?.name;
-            handlers.handleFinishCuring(cicloId, cicloName);
-        });
-    });
-}
-export function initializeDashboardEventListeners(statsData) {
-    const menuBtn = getEl('menuBtn');
-    const dropdownMenu = getEl('dropdownMenu');
-    if(menuBtn && dropdownMenu) {
-        menuBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            dropdownMenu.classList.toggle('hidden');
-        });
-        window.addEventListener('click', (e) => {
-            if (!menuBtn.contains(e.target) && !dropdownMenu.contains(e.target)) {
-                dropdownMenu.classList.add('hidden');
-            }
-        });
+    let frascosHTML = '';
+    if (frascos.length > 0) {
+        frascosHTML = frascos
+            .sort((a, b) => b.fechaEnfrascado.toDate() - a.fechaEnfrascado.toDate()) // Ordena por más reciente primero
+            .map(frasco => {
+                const diasCurado = handlers.calculateDaysBetween(frasco.fechaEnfrascado.toDate(), new Date());
+                const stage = getCuradoStage(diasCurado);
+                return `
+                    <div class="card p-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+                        <div>
+                            <h4 class="font-bold text-lg text-amber-400">${frasco.nombreCosecha}</h4>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">Genética: ${frasco.geneticaPrincipal}</p>
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <div class="text-center">
+                                <div class="text-3xl font-mono">${diasCurado}</div>
+                                <div class="text-xs text-gray-500 dark:text-gray-400">días</div>
+                            </div>
+                            <span class="text-xs font-semibold px-2 py-1 rounded-full text-white ${stage.colorClass}">${stage.text}</span>
+                        </div>
+                        <button data-frasco-id="${frasco.id}" class="btn-danger btn-base py-2 px-3 rounded-lg w-full sm:w-auto eliminar-frasco-btn">
+                            Stock Terminado
+                        </button>
+                    </div>
+                `;
+            }).join('');
+    } else {
+        frascosHTML = `<p class="text-center text-gray-500 dark:text-gray-400 py-8">No tienes frascos en curado. ¡Finaliza una cosecha para empezar!</p>`;
     }
 
-    const statsContainer = getEl('stats-carousel');
-    if (statsContainer && statsData && statsData.length > 0) {
-        let currentStatIndex = 0;
-        const createStatCardHTML = (stat) => `
-            <div class="stat-card flex items-center p-3 bg-gray-100 dark:bg-gray-800/50 rounded-lg" style="opacity: 0;">
-                <div class="p-2 bg-${stat.color}-500/20 rounded-md">
-                    ${stat.icon}
-                </div>
-                <div class="ml-4">
-                    <p class="text-sm text-gray-500 dark:text-gray-400">${stat.label}</p>
-                    <p class="text-2xl font-bold font-mono text-gray-800 dark:text-gray-100">${stat.value}</p>
-                </div>
-            </div>`;
+    const modalContent = `
+        <div class="w-11/12 md:w-full max-w-2xl p-6 rounded-lg shadow-lg max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-amber-400">Frascos en Curado</h2>
+                <button id="closeCuradoModal" class="btn-secondary btn-base p-2 rounded-full">&times;</button>
+            </div>
+            <div class="flex-grow overflow-y-auto pr-2 space-y-4">
+                ${frascosHTML}
+            </div>
+        </div>
+    `;
 
-        const updateStats = () => {
-            const safeStats = statsData.length > 1 ? statsData : [statsData[0], statsData[0]];
-            const stat1 = safeStats[currentStatIndex % safeStats.length];
-            const stat2 = safeStats[(currentStatIndex + 1) % safeStats.length];
-            statsContainer.innerHTML = createStatCardHTML(stat1) + createStatCardHTML(stat2);
-            setTimeout(() => {
-                statsContainer.querySelectorAll('.stat-card').forEach(card => card.style.opacity = '1');
-            }, 100);
-            currentStatIndex = (currentStatIndex + 2) % safeStats.length;
-        };
-        updateStats();
-        setInterval(updateStats, 5000);
-    }
-}
-export function renderSalasView(salas, ciclos, handlers) {
-    const container = getEl('app-content-container');
-    if(!container) return;
-    getEl('view-title').innerText = 'Todas las Salas';
-    container.innerHTML = `<div id="salasGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6"></div>`;
-    renderSalasGrid(salas, ciclos, handlers);
+    modal.innerHTML = modalContent;
+    modal.style.display = 'flex';
+
+    // Añadir listeners después de que el HTML está en el DOM
+    setTimeout(() => {
+        getEl('closeCuradoModal').addEventListener('click', () => modal.style.display = 'none');
+        document.querySelectorAll('.eliminar-frasco-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const frascoId = e.currentTarget.dataset.frascoId;
+                handlers.handleEliminarFrasco(frascoId);
+            });
+        });
+    }, 0);
 }
