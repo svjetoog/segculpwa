@@ -1681,7 +1681,109 @@ function createHistorialCard(ciclo, handlers) {
     
     return card;
 }
+export function openManageGeneticsModal(ciclo, allGenetics, handlers, onSave) {
+    const modal = getEl('manageGeneticsModal');
+    let currentGeneticsInCiclo = JSON.parse(JSON.stringify(ciclo.genetics || [])); // Copia profunda para no modificar el estado original
 
+    // Función interna para dibujar la lista de genéticas dentro del modal
+    const renderGeneticsList = () => {
+        const container = getEl('managed-genetics-list');
+        container.innerHTML = ''; // Limpiamos la lista actual
+
+        if (currentGeneticsInCiclo.length === 0) {
+            container.innerHTML = '<p class="text-sm text-gray-500 dark:text-gray-400 italic">No hay genéticas en este ciclo. Añade algunas para empezar.</p>';
+            return;
+        }
+
+        currentGeneticsInCiclo.forEach((item, index) => {
+            const li = document.createElement('li');
+            li.className = 'flex justify-between items-center p-2 rounded-md bg-gray-100 dark:bg-gray-800';
+            li.innerHTML = `
+                <div>
+                    <span class="font-semibold text-amber-400">${item.name}</span>
+                    <span class="text-xs text-gray-500 dark:text-gray-400">(${item.source})</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button data-index="${index}" class="btn-secondary btn-base rounded-full w-7 h-7 flex items-center justify-center text-lg manage-qty-btn" data-op="-">-</button>
+                    <span class="font-bold w-4 text-center">${item.quantity}</span>
+                    <button data-index="${index}" class="btn-secondary btn-base rounded-full w-7 h-7 flex items-center justify-center text-lg manage-qty-btn" data-op="+">+</button>
+                    <button data-index="${index}" class="btn-danger btn-base rounded-full w-7 h-7 flex items-center justify-center text-lg remove-item-btn" title="Eliminar del ciclo">&times;</button>
+                </div>
+            `;
+            container.appendChild(li);
+        });
+    };
+
+    // Estructura principal del modal
+    const content = `
+        <div class="w-11/12 md:w-full max-w-2xl p-6 rounded-lg shadow-lg flex flex-col max-h-[90vh]">
+            <h2 class="text-2xl font-bold mb-4 text-amber-400">Gestionar Genéticas del Ciclo</h2>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Ajusta las cantidades o añade nuevas genéticas desde tu stock. Los cambios se reflejarán en tu inventario general al guardar.</p>
+            
+            <div class="flex-grow overflow-y-auto pr-2 space-y-2" id="managed-genetics-list">
+                </div>
+
+            <div class="mt-6 pt-4 border-t border-gray-300 dark:border-gray-600 space-y-4">
+                <button type="button" id="add-more-genetics-btn" class="btn-secondary btn-base w-full py-2 rounded-lg">
+                    + Añadir más genéticas desde el Stock
+                </button>
+                <div class="flex justify-end gap-4">
+                    <button type="button" id="cancelManageGenetics" class="btn-secondary btn-base py-2 px-4 rounded-lg">Cancelar</button>
+                    <button type="button" id="saveManagedGenetics" class="btn-primary btn-base py-2 px-4 rounded-lg">Guardar Cambios</button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    modal.innerHTML = content;
+    modal.style.display = 'flex';
+    renderGeneticsList(); // Renderizamos la lista inicial
+
+    // Event listeners para los botones del modal
+    getEl('managed-genetics-list').addEventListener('click', (e) => {
+        const target = e.target.closest('button');
+        if (!target) return;
+
+        const index = parseInt(target.dataset.index);
+
+        if (target.classList.contains('manage-qty-btn')) {
+            const op = target.dataset.op;
+            if (op === '+') {
+                currentGeneticsInCiclo[index].quantity++;
+            } else if (op === '-' && currentGeneticsInCiclo[index].quantity > 1) {
+                currentGeneticsInCiclo[index].quantity--;
+            }
+        }
+
+        if (target.classList.contains('remove-item-btn')) {
+            currentGeneticsInCiclo.splice(index, 1);
+        }
+
+        renderGeneticsList(); // Volvemos a dibujar la lista con los nuevos datos
+    });
+
+    getEl('add-more-genetics-btn').addEventListener('click', () => {
+        handlers.openGeneticsSelector((selectedGenetics) => {
+            // Lógica para fusionar las nuevas genéticas con las existentes
+            selectedGenetics.forEach(newItem => {
+                const existingItem = currentGeneticsInCiclo.find(item => item.id === newItem.id && item.source === newItem.source);
+                if (existingItem) {
+                    existingItem.quantity += newItem.quantity;
+                } else {
+                    currentGeneticsInCiclo.push(newItem);
+                }
+            });
+            renderGeneticsList();
+        });
+    });
+    
+    getEl('cancelManageGenetics').addEventListener('click', () => modal.style.display = 'none');
+    
+    getEl('saveManagedGenetics').addEventListener('click', () => {
+        onSave(ciclo.id, currentGeneticsInCiclo);
+        modal.style.display = 'none';
+    });
+}
 export function openFinalizarCicloModal(ciclo, predefinedTags, maxCustomTags, allGenetics) {
     const modal = getEl('finalizarCicloModal');
     const form = getEl('finalizarCicloForm');
