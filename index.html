@@ -466,7 +466,23 @@
         </footer>
     </div>
     
-    <div id="ciclosView" class="p-4 sm:p-6 lg:p-8 hidden"></div>
+<div id="ciclosView" class="p-4 sm:p-6 lg:p-8 hidden">
+    <header class="flex justify-between items-start mb-8">
+        <div>
+            <h1 id="salaNameHeader" class="text-3xl font-bold text-amber-400 font-mono tracking-wider"></h1>
+            <p class="text-gray-500 dark:text-gray-400">Ciclos activos en esta sala.</p>
+        </div>
+        <button id="backToSalasBtn" class="btn-secondary btn-base py-2 px-4 rounded-lg">Volver a Salas</button>
+    </header>
+
+    <div id="emptyCiclosState" class="text-center py-10 text-gray-500 dark:text-gray-400 hidden">
+        <p>Esta sala no tiene ciclos activos.</p>
+        <p class="mt-2 text-sm">Puedes añadir uno desde el menú.</p>
+    </div>
+
+    <div id="ciclosGrid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        </div>
+</div>
     <div id="cicloDetailView" class="p-4 sm:p-6 lg:p-8 hidden"></div>
     <div id="toolsView" class="p-4 sm:p-6 lg:p-8 hidden"></div>
     <div id="settingsView" class="p-4 sm:p-6 lg:p-8 hidden"></div>
