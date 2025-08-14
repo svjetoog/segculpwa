@@ -505,20 +505,23 @@ export function openGeneticsSelectorModal(allGenetics, onConfirm) {
     };
 
     const createListItem = (item, source) => {
-        const stock = source === 'clone' ? item.cloneStock : item.quantity;
+        const stock = source === 'clone' ? item.cloneStock : item.seedStock; // Corregido para usar seedStock
+        const uniqueId = `item-${source}-${item.id}`; // ID base único para cada fila
+
         const div = document.createElement('div');
         div.className = 'grid grid-cols-12 gap-4 items-center p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800';
+        
         div.innerHTML = `
-            <div class="col-span-1 flex items-center">
-                <input type="checkbox" class="h-5 w-5 rounded text-amber-500 focus:ring-amber-500 selector-checkbox">
-            </div>
-            <div class="col-span-5">
-                <p class="font-semibold">${item.name}</p>
-                <p class="text-xs text-gray-500 dark:text-gray-400">Disponibles: ${stock || 0}</p>
+            <div class="col-span-6 flex items-center gap-3">
+                <input type="checkbox" id="${uniqueId}-check" class="h-5 w-5 rounded text-amber-500 focus:ring-amber-500 selector-checkbox">
+                <label for="${uniqueId}-check" class="flex flex-col cursor-pointer">
+                    <span class="font-semibold">${item.name}</span>
+                    <span class="text-xs text-gray-500 dark:text-gray-400">Disponibles: ${stock || 0}</span>
+                </label>
             </div>
             <div class="col-span-3 flex items-center gap-2">
-                <label class="text-sm">Cant:</label>
-                <input type="number" min="1" max="${stock || 0}" value="1" disabled class="w-full p-1 rounded-md selector-quantity">
+                <label for="${uniqueId}-qty" class="text-sm">Cant:</label>
+                <input type="number" id="${uniqueId}-qty" name="${uniqueId}-qty" min="1" max="${stock || 0}" value="1" disabled class="w-full p-1 rounded-md selector-quantity">
             </div>
             <div class="col-span-3 flex items-center justify-end">
                 <button type="button" disabled class="btn-base btn-secondary text-xs py-1 px-3 rounded-full selector-tracking-btn">
