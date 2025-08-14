@@ -1950,6 +1950,15 @@ export function initializeEventListeners(handlers) {
     const aboutBtn = getEl('aboutBtn');
     if(aboutBtn) aboutBtn.addEventListener('click', () => getEl('aboutModal').style.display = 'flex');
     
+    const aboutBtnInMenu = getEl('aboutBtnInMenu');
+    if (aboutBtnInMenu) {
+        aboutBtnInMenu.addEventListener('click', (e) => { 
+            e.preventDefault(); 
+            getEl('aboutModal').style.display = 'flex'; 
+            getEl('dropdownMenu').classList.add('hidden'); 
+        });
+    }
+
     const menuAddSalaLink = getEl('menuAddSala');
     if (menuAddSalaLink) {
         menuAddSalaLink.innerHTML = "Añadir Sala " + createTooltipIcon("Una Sala es tu espacio físico de cultivo, como una carpa o un indoor. Dentro de las salas organizarás tus Ciclos.");
