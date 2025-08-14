@@ -1763,6 +1763,7 @@ export function openManageGeneticsModal(ciclo, allGenetics, handlers, onSave) {
     });
 
     getEl('add-more-genetics-btn').addEventListener('click', () => {
+        modal.style.display = 'none'; 
         handlers.openGeneticsSelector((selectedGenetics) => {
             // Lógica para fusionar las nuevas genéticas con las existentes
             selectedGenetics.forEach(newItem => {
