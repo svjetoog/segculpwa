@@ -30,7 +30,8 @@ import {
     openProfileModal,
     updateBellIcon,
     renderNotificationsDropdown,
-    updateAdminUI as uiUpdateAdminUI
+    updateAdminUI as uiUpdateAdminUI,
+    openManageGeneticsModal as uiOpenManageGeneticsModal
 } from './ui.js';
 import { startMainTour, startToolsTour } from './onboarding.js';
 
@@ -517,7 +518,92 @@ const handlers = {
     },
     updateAdminUI: () => {
     uiUpdateAdminUI(currentUserRole === 'admin'); // Usamos el nombre importado con el alias
-},
+    },
+    openManageGeneticsModal: (cicloId) => {
+        const ciclo = currentCiclos.find(c => c.id === cicloId);
+        if (!ciclo) {
+            showNotification('No se pudo encontrar el ciclo para gestionar.', 'error');
+            return;
+        }
+
+        // Llamamos a la función de la UI que creamos en el paso anterior.
+        // Le pasamos todos los datos que necesita para funcionar.
+        uiOpenManageGeneticsModal(
+            ciclo, 
+            currentGenetics, 
+            handlers,
+            handlers.handleManageGeneticsSubmit // Este es el handler que se ejecutará al guardar. Lo crearemos en el próximo paso.
+        );
+    },
+    handleManageGeneticsSubmit: async (cicloId, newGeneticsState) => {
+        const originalCiclo = currentCiclos.find(c => c.id === cicloId);
+        if (!originalCiclo) {
+            showNotification('Error: No se encontró el ciclo original.', 'error');
+            return;
+        }
+
+        // Paso 1: Calcular los deltas de stock.
+        // Un delta positivo significa que sobran plantas y vuelven al stock.
+        // Un delta negativo significa que se usaron más plantas del stock.
+        const stockDeltas = new Map();
+
+        // Primero, sumamos todo lo que había originalmente. Es como "devolver" todo al stock.
+        originalCiclo.genetics.forEach(item => {
+            const currentDelta = stockDeltas.get(item.id) || { clone: 0, seed: 0 };
+            if (item.source === 'clone') {
+                currentDelta.clone += item.quantity;
+            } else if (item.source === 'seed') {
+                currentDelta.seed += item.quantity;
+            }
+            stockDeltas.set(item.id, currentDelta);
+        });
+
+        // Segundo, restamos el nuevo estado. Es como "sacar" lo necesario del stock.
+        newGeneticsState.forEach(item => {
+            const currentDelta = stockDeltas.get(item.id) || { clone: 0, seed: 0 };
+            if (item.source === 'clone') {
+                currentDelta.clone -= item.quantity;
+            } else if (item.source === 'seed') {
+                currentDelta.seed -= item.quantity;
+            }
+            stockDeltas.set(item.id, currentDelta);
+        });
+
+        // Paso 2: Ejecutar las actualizaciones en la base de datos de forma atómica.
+        try {
+            const batch = writeBatch(db);
+
+            // Actualizamos el stock en la colección de genéticas
+            for (const [geneticId, deltas] of stockDeltas.entries()) {
+                const geneticRef = doc(db, `users/${userId}/genetics`, geneticId);
+                const updatePayload = {};
+                if (deltas.clone !== 0) {
+                    updatePayload.cloneStock = increment(deltas.clone);
+                }
+                if (deltas.seed !== 0) {
+                    updatePayload.seedStock = increment(deltas.seed);
+                }
+                
+                // Solo actualizamos si hay algo que cambiar
+                if (Object.keys(updatePayload).length > 0) {
+                    batch.update(geneticRef, updatePayload);
+                }
+            }
+            
+            // Actualizamos el array de genéticas en el documento del ciclo
+            const cicloRef = doc(db, `users/${userId}/ciclos`, cicloId);
+            batch.update(cicloRef, { genetics: newGeneticsState });
+
+            // Ejecutamos todas las operaciones juntas
+            await batch.commit();
+
+            showNotification('Genéticas del ciclo actualizadas con éxito.', 'success');
+
+        } catch (error) {
+            console.error("Error al actualizar las genéticas del ciclo:", error);
+            showNotification('Ocurrió un error al guardar los cambios.', 'error');
+        }
+    },
     handleOpenProfileModal: async () => {
     try {
         console.log('Abriendo modal de perfil...'); // Detective 1
