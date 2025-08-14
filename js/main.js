@@ -2,6 +2,7 @@
 import { auth, db } from './firebase.js';
 import { onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updatePassword, deleteUser } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { collection, doc, setDoc, addDoc, deleteDoc, onSnapshot, query, serverTimestamp, getDocs, writeBatch, updateDoc, arrayUnion, where, increment, getDoc, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
 import {
      getEl, showNotification, renderSalasGrid, createCicloCard, createLogEntry,
     renderGeneticsList, renderStockList,
@@ -31,7 +32,8 @@ import {
     updateBellIcon,
     renderNotificationsDropdown,
     updateAdminUI as uiUpdateAdminUI,
-    openManageGeneticsModal as uiOpenManageGeneticsModal
+    openManageGeneticsModal as uiOpenManageGeneticsModal,
+    openAdminNotificationModal as uiOpenAdminNotificationModal
 } from './ui.js';
 import { startMainTour, startToolsTour } from './onboarding.js';
 
@@ -516,6 +518,39 @@ const handlers = {
         // Llama a la función de UI que creamos en el paso anterior
         openCuradoModal(currentFrascos, handlers);
     },
+    openAdminNotificationModal: () => {
+    uiOpenAdminNotificationModal(handlers);
+},
+
+handleAdminNotificationSubmit: async (e) => {
+    e.preventDefault();
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Enviando...';
+
+    const targetUserId = getEl('admin-target-uid').value.trim();
+    const message = getEl('admin-message').value.trim();
+
+    if (!targetUserId || !message) {
+        showNotification('Ambos campos son obligatorios.', 'error');
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Enviar Mensaje';
+        return;
+    }
+
+    const sendAdminNotification = httpsCallable(functions, 'sendAdminNotification');
+
+    try {
+        const result = await sendAdminNotification({ targetUserId, message });
+        showNotification(result.data.message, 'success');
+        getEl('adminNotificationModal').style.display = 'none';
+    } catch (error) {
+        console.error("Error al llamar a la Cloud Function:", error);
+        showNotification(`Error: ${error.message}`, 'error');
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Enviar Mensaje';
+    }
+    },
     updateAdminUI: () => {
     uiUpdateAdminUI(currentUserRole === 'admin'); // Usamos el nombre importado con el alias
     },
@@ -573,35 +608,59 @@ const handlers = {
         try {
             const batch = writeBatch(db);
 
-            // Actualizamos el stock en la colección de genéticas
-            for (const [geneticId, deltas] of stockDeltas.entries()) {
-                const geneticRef = doc(db, `users/${userId}/genetics`, geneticId);
-                const updatePayload = {};
-                if (deltas.clone !== 0) {
-                    updatePayload.cloneStock = increment(deltas.clone);
-                }
-                if (deltas.seed !== 0) {
-                    updatePayload.seedStock = increment(deltas.seed);
+            for (const item of selectedGenetics) {
+                if (item.trackIndividually) {
+                    for (let i = 0; i < item.quantity; i++) {
+                        cicloData.genetics.push({
+                            id: item.id,
+                            name: `${item.name} #${i + 1}`,
+                            quantity: 1,
+                            source: item.source,
+                            phenoId: `${item.id}-${Date.now()}-${i}`
+                        });
+                    }
+                } else {
+                    cicloData.genetics.push({
+                        id: item.id,
+                        name: item.name,
+                        quantity: item.quantity,
+                        source: item.source
+                    });
                 }
                 
-                // Solo actualizamos si hay algo que cambiar
-                if (Object.keys(updatePayload).length > 0) {
-                    batch.update(geneticRef, updatePayload);
-                }
-            }
+                const stockField = item.source === 'clone' ? 'cloneStock' : 'seedStock';
+                const geneticEnEstado = currentGenetics.find(g => g.id === item.id);
             
-            // Actualizamos el array de genéticas en el documento del ciclo
-            const cicloRef = doc(db, `users/${userId}/ciclos`, cicloId);
-            batch.update(cicloRef, { genetics: newGeneticsState });
+                if (geneticEnEstado && geneticEnEstado[stockField] === item.quantity) {
+                    // --- MEJORA APLICADA AQUÍ ---
+                    const tipoStock = item.source === 'clone' ? 'clon' : 'semilla';
+                    const mensajeStock = `Has usado la última ${tipoStock} de '${item.name}'. Tu stock ahora es 0.`;
+                    // --- FIN DE LA MEJORA ---
+                    await handlers.createNotification(mensajeStock, 'stock', `/tools/genetics/${item.id}`);
+                }
 
-            // Ejecutamos todas las operaciones juntas
+                const itemRef = doc(db, `users/${userId}/genetics`, item.id);
+                batch.update(itemRef, { [stockField]: increment(-item.quantity) });
+
+            } // <-- ERROR DE PUNTO Y COMA CORREGIDO AQUÍ
+
+            if (cicloData.phase === 'Floración') {
+                cicloData.floweringWeeks = generateStandardWeeks();
+            } else if (cicloData.phase === 'Vegetativo') {
+                cicloData.vegetativeWeeks = calculateVegetativeWeeks(cicloData.vegetativeStartDate);
+            }
+
+            const newCicloRef = doc(collection(db, `users/${userId}/ciclos`));
+            batch.set(newCicloRef, cicloData);
+
             await batch.commit();
 
-            showNotification('Genéticas del ciclo actualizadas con éxito.', 'success');
+            showNotification('Ciclo creado con éxito. Stock actualizado.');
+            getEl('cicloModal').style.display = 'none';
 
         } catch (error) {
-            console.error("Error al actualizar las genéticas del ciclo:", error);
-            showNotification('Ocurrió un error al guardar los cambios.', 'error');
+            console.error("Error creando ciclo y actualizando stock:", error);
+            showNotification('Error al crear el ciclo.', 'error');
         }
     },
     handleOpenProfileModal: async () => {
@@ -703,13 +762,16 @@ handleBellClick: async () => {
     }
 },
 
-createNotification: async (message) => {
+createNotification: async (message, tipo = 'general', enlace = '#') => {
     if (!userId) return;
     try {
+        // La colección ahora es la correcta según tu código: users/{userId}/notifications
         await addDoc(collection(db, `users/${userId}/notifications`), {
             message: message,
-            timestamp: serverTimestamp(),
-            read: false
+            timestamp: serverTimestamp(), // 'timestamp' es el nombre que usas en loadNotifications
+            read: false,
+            tipo: tipo, // Campo nuevo para el icono
+            enlace: enlace // Campo nuevo para futura navegación
         });
     } catch (error) {
         console.error("Error creando notificación:", error);
@@ -996,6 +1058,9 @@ handlePromoteToGenetic: async (e) => {
             await batch.commit();
 
             showNotification(`¡"${newGeneticData.name}" añadido al catálogo!`, 'success');
+            const mensajeKeeper = `¡Nuevo keeper seleccionado! '${newGeneticData.name}' fue añadido a tu catálogo.`;
+            // El enlace podría llevar a la nueva genética en el catálogo.
+            await handlers.createNotification(mensajeKeeper, 'keeper', `/tools/genetics/${newGeneticRef.id}`);
             modal.style.display = 'none';
 
         } catch (error) {
@@ -1042,11 +1107,11 @@ handlePhenoCardUpdate: async (e) => {
         showNotification('Evaluación guardada con éxito.');
         modal.style.display = 'none';
 
-    } catch (error) {
-        console.error("Error guardando evaluación del feno:", error);
-        showNotification("Error al guardar la evaluación.", "error");
-    }
-},
+        } catch (error) {
+            console.error("Error guardando evaluación del feno:", error);
+            showNotification("Error al guardar la evaluación.", "error");
+        }
+    },
     showPhenohuntWorkspace: (hunt) => {
         handlers.hideAllViews();
         const view = getEl('phenohuntDetailView');
@@ -1286,15 +1351,11 @@ handlePhenoCardUpdate: async (e) => {
         // Ahora solo pasamos el catálogo maestro unificado.
         uiOpenGeneticsSelectorModal(currentGenetics, onConfirmCallback);
     },
-    // MODIFICADO: Lógica de creación de ciclo con control granular de phenohunt
     handleCicloFormSubmit: async (e) => {
         e.preventDefault();
         const form = e.target;
         const cicloId = form.dataset.id;
 
-        // --- INICIO DE CAMBIOS ---
-
-        // NUEVO: Recolectamos los datos de los nuevos campos.
         const cultivationType = getEl('cultivationType').value;
         const cultivationDetails = {};
 
@@ -1309,7 +1370,6 @@ handlePhenoCardUpdate: async (e) => {
             cultivationDetails.systemType = getEl('systemType').value.trim() || null;
         }
 
-        // MODIFICADO: Obtenemos los datos básicos del ciclo.
         const cicloData = {
             name: getEl('ciclo-name').value.trim(),
             salaId: getEl('ciclo-sala-select').value,
@@ -1325,7 +1385,6 @@ handlePhenoCardUpdate: async (e) => {
             showNotification('Nombre y sala son obligatorios.', 'error'); return;
         }
 
-        // --- FIN DE CAMBIOS ---
         
         // El resto de la lógica para creación vs edición se mantiene, 
         // pero ahora 'cicloData' ya contiene los nuevos detalles.
@@ -1368,7 +1427,7 @@ handlePhenoCardUpdate: async (e) => {
         try {
             const batch = writeBatch(db);
 
-            selectedGenetics.forEach(item => {
+            for (const item of selectedGenetics) {
                 if (item.trackIndividually) {
                     for (let i = 0; i < item.quantity; i++) {
                         cicloData.genetics.push({
@@ -1387,7 +1446,18 @@ handlePhenoCardUpdate: async (e) => {
                         source: item.source
                     });
                 }
-            });
+            const stockField = item.source === 'clone' ? 'cloneStock' : 'seedStock';
+            const geneticEnEstado = currentGenetics.find(g => g.id === item.id);
+        
+            if (geneticEnEstado && geneticEnEstado[stockField] === item.quantity) {
+             const mensajeStock = `Has usado el último clon de '${item.name}'. Tu stock ahora es 0.`;
+             // Usamos un `await` para asegurar que la notificación se intente crear
+             await handlers.createNotification(mensajeStock, 'stock', `/tools/genetics/${item.id}`);
+        }
+        const itemRef = doc(db, `users/${userId}/genetics`, item.id);
+        batch.update(itemRef, { [stockField]: increment(-item.quantity) });
+
+            }
 
             if (cicloData.phase === 'Floración') {
                 cicloData.floweringWeeks = generateStandardWeeks();
@@ -1397,12 +1467,6 @@ handlePhenoCardUpdate: async (e) => {
 
             const newCicloRef = doc(collection(db, `users/${userId}/ciclos`));
             batch.set(newCicloRef, cicloData);
-
-            for (const item of selectedGenetics) {
-                const stockField = item.source === 'clone' ? 'cloneStock' : 'seedStock';
-                const itemRef = doc(db, `users/${userId}/genetics`, item.id);
-                batch.update(itemRef, { [stockField]: increment(-item.quantity) });
-            }
 
             await batch.commit();
 
@@ -2017,6 +2081,9 @@ handlePhenoCardUpdate: async (e) => {
             
             await batch.commit();
             showNotification('¡Cosecha guardada en el historial y frasco añadido al inventario!');
+            const mensajeCosecha = `¡Cosecha finalizada! El ciclo '${cicloOriginal.name}' está en tu historial.`;
+            // El enlace podría llevar al historial en el futuro. Por ahora, es un placeholder.
+            await handlers.createNotification(mensajeCosecha, 'cosecha', `/historial/${cicloId}`);
             getEl('finalizarCicloModal').style.display = 'none';
 
         } catch(error) {

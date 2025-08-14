@@ -1901,6 +1901,14 @@ export function initializeEventListeners(handlers) {
             getEl('authError').classList.add('hidden');
         });
     }
+    const adminSendDirectBtn = getEl('adminSendDirectNotification');
+if (adminSendDirectBtn) {
+    adminSendDirectBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        handlers.openAdminNotificationModal();
+        getEl('adminMenu').classList.add('hidden');
+    });
+}
 
     const showLoginBtn = getEl('showLogin');
     if (showLoginBtn) {
@@ -2588,7 +2596,14 @@ function timeAgo(date) {
     return `hace ${Math.floor(seconds)} segundos`;
 }
 
-
+const NOTIFICATION_ICONS = {
+  'cosecha': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-6 h-6 text-green-500"><path d="M5.5 16.5a1.5 1.5 0 0 1-3 0V15a1.5 1.5 0 1 1 3 0v1.5Zm9-12a1.5 1.5 0 0 0-3 0v1.5a1.5 1.5 0 1 0 3 0V4.5Zm-4.5 9a1.5 1.5 0 0 1-3 0V12a1.5 1.5 0 1 1 3 0v1.5Zm9-12a1.5 1.5 0 0 0-3 0v1.5a1.5 1.5 0 1 0 3 0V1.5Z" /><path fill-rule="evenodd" d="M16 9.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0ZM9.5 5a.5.5 0 0 1 .5.5v3.5a.5.5 0 0 1-1 0V5.5a.5.5 0 0 1 .5-.5Z" clip-rule="evenodd" /></svg>`,
+  'keeper': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-6 h-6 text-yellow-400"><path fill-rule="evenodd" d="M10.868 2.884c.321-.772 1.415-.772 1.736 0l1.291 3.116c.142.343.49.568.88.568h3.282c.809 0 1.127.994.558 1.52l-2.66 1.932c-.288.208-.415.572-.29.9l1.29 3.116c.322.772-.653 1.47-1.393 1.02l-2.66-1.932a.996.996 0 0 0-1.173 0l-2.66 1.932c-.74.45-1.715-.248-1.393-1.02l1.29-3.116c.125-.328 0-.692-.29-.9L2.14 8.088c-.57-.526-.25-1.52.558-1.52h3.282c.39 0 .738-.225.88-.568l1.29-3.116Z" clip-rule="evenodd" /></svg>`,
+  'stock': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-6 h-6 text-red-500"><path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495ZM10 6a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 10 6Zm0 9a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clip-rule="evenodd" /></svg>`,
+  'admin_broadcast': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-6 h-6 text-amber-500"><path d="M10 8a2 2 0 1 0-4 0a2 2 0 0 0 4 0Z" /><path fill-rule="evenodd" d="M10 3a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-1.5 0v-1.5A.75.75 0 0 1 10 3ZM5.93 4.54a.75.75 0 0 1 .16 1.047l-.82 1.232a.75.75 0 1 1-1.216-.81l.82-1.232a.75.75 0 0 1 1.056-.237Zm8.14 0a.75.75 0 0 1 1.056.237l.82 1.232a.75.75 0 0 1-1.216.81l-.82-1.232a.75.75 0 0 1 .16-1.047ZM10 15.25a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-1.5 0v-1.5a.75.75 0 0 1 .75-.75ZM4.28 9.54a.75.75 0 0 1 1.047-.16l1.232.82a.75.75 0 0 1-.81 1.216l-1.232-.82a.75.75 0 0 1-.16-1.056Zm11.44 0a.75.75 0 0 1-.16 1.056l-1.232.82a.75.75 0 1 1-.81-1.216l1.232-.82a.75.75 0 0 1 1.047.16Z" clip-rule="evenodd" /></svg>`,
+  'admin_direct': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-6 h-6 text-amber-500"><path d="M3.5 4A1.5 1.5 0 0 1 5 2.5h10A1.5 1.5 0 0 1 16.5 4v10a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 14V4ZM5 4.25v2.546l4.991 3.012a.75.75 0 0 0 .93-.01L15 6.75v-2.5a.25.25 0 0 0-.25-.25H5.25a.25.25 0 0 0-.25.25Z" /><path d="M15 7.636l-4.22 2.551a2.25 2.25 0 0 1-2.793-.016L5 7.574V14a.5.5 0 0 0 .5.5h9a.5.5 0 0 0 .5-.5V7.636Z" /></svg>`,
+  'general': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-6 h-6 text-gray-400"><path fill-rule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-7-4a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM9 9a.75.75 0 0 0 0 1.5h.253a.25.25 0 0 1 .244.304l-.459 2.066A1.75 1.75 0 0 0 10.747 15H11a.75.75 0 0 0 0-1.5h-.253a.25.25 0 0 1-.244-.304l.459-2.066A1.75 1.75 0 0 0 9.253 9H9Z" clip-rule="evenodd" /></svg>`
+};
 // Función para renderizar la lista desplegable de notificaciones
 export function renderNotificationsDropdown(notifications) {
     const list = getEl('notifications-list');
@@ -2607,14 +2622,30 @@ export function renderNotificationsDropdown(notifications) {
 
     notifications.forEach(notif => {
         const item = document.createElement('div');
-        // El color del borde izquierdo puede indicar el tipo de notificación en el futuro
-        item.className = 'p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 border-l-4 border-amber-400';
+        const iconHTML = NOTIFICATION_ICONS[notif.tipo] || NOTIFICATION_ICONS['general'];
         
+        let itemClasses = 'p-3 rounded-lg flex items-start gap-3 transition-colors duration-200 ';
+
+        // Lógica de Estilos por Tipo de Notificación
+        if (notif.tipo === 'admin_broadcast' || notif.tipo === 'admin_direct') {
+            // Estilo prioritario para Admin
+            itemClasses += 'bg-amber-50 dark:bg-neutral-800';
+        } else {
+            // Estilo estándar para Sistema
+            itemClasses += 'border-l-4 border-amber-400 hover:bg-gray-100 dark:hover:bg-gray-700';
+        }
+        
+        item.className = itemClasses;
         const notificationDate = notif.timestamp ? notif.timestamp.toDate() : new Date();
 
         item.innerHTML = `
-            <p class="text-sm text-gray-800 dark:text-gray-200">${notif.message}</p>
-            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">${timeAgo(notificationDate)}</p>
+            <div class="flex-shrink-0 pt-0.5">
+                ${iconHTML}
+            </div>
+            <div class="flex-grow">
+                <p class="text-sm text-neutral-800 dark:text-neutral-100">${notif.message}</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">${timeAgo(notificationDate)}</p>
+            </div>
         `;
         list.appendChild(item);
     });
@@ -2624,4 +2655,33 @@ export function updateAdminUI(isAdmin) {
     if (adminBtn) {
         adminBtn.classList.toggle('hidden', !isAdmin);
     }
+}
+export function openAdminNotificationModal(handlers) {
+    const modal = getEl('adminNotificationModal');
+    const title = 'Enviar Notificación a Usuario';
+    const content = `
+        <div class="space-y-4">
+            <div>
+                <label for="admin-target-uid" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">User ID de Destino</label>
+                <input type="text" id="admin-target-uid" required class="w-full p-2 rounded-md font-mono" placeholder="Pega el UID del usuario aquí">
+            </div>
+            <div>
+                <label for="admin-message" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Mensaje</label>
+                <textarea id="admin-message" rows="5" required class="w-full p-2 rounded-md" placeholder="Escribe tu mensaje..."></textarea>
+            </div>
+        </div>
+    `;
+    modal.innerHTML = createModalHTML(
+        'adminNotificationModalContent', 
+        title, 
+        'adminNotificationForm', 
+        content, 
+        'Enviar Mensaje', 
+        'cancelAdminNotificationBtn'
+    );
+    modal.style.display = 'flex';
+
+    // Listeners específicos para este modal
+    getEl('cancelAdminNotificationBtn').addEventListener('click', () => modal.style.display = 'none');
+    getEl('adminNotificationForm').addEventListener('submit', handlers.handleAdminNotificationSubmit);
 }
