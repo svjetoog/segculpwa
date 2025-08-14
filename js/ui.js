@@ -1763,9 +1763,10 @@ export function openManageGeneticsModal(ciclo, allGenetics, handlers, onSave) {
     });
 
     getEl('add-more-genetics-btn').addEventListener('click', () => {
-        modal.style.display = 'none'; 
+        modal.style.display = 'none'; // Ocultamos el modal actual
+        
         handlers.openGeneticsSelector((selectedGenetics) => {
-            // Lógica para fusionar las nuevas genéticas con las existentes
+            // Cuando el selector se confirma, fusionamos la nueva selección
             selectedGenetics.forEach(newItem => {
                 const existingItem = currentGeneticsInCiclo.find(item => item.id === newItem.id && item.source === newItem.source);
                 if (existingItem) {
@@ -1774,7 +1775,9 @@ export function openManageGeneticsModal(ciclo, allGenetics, handlers, onSave) {
                     currentGeneticsInCiclo.push(newItem);
                 }
             });
-            renderGeneticsList();
+            // Y volvemos a abrir ESTE MISMO modal, pero con la lista de genéticas actualizada
+            const updatedCiclo = { ...ciclo, genetics: currentGeneticsInCiclo };
+            openManageGeneticsModal(updatedCiclo, allGenetics, handlers, onSave);
         });
     });
     
