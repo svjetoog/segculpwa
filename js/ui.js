@@ -941,19 +941,25 @@ export function renderCicloDetails(ciclo, handlers) {
             </header>
             
             <div class="my-6 p-4 card rounded-lg">
-                <h3 class="text-lg font-semibold mb-3 text-gray-800 dark:text-gray-200">Genéticas en Cultivo</h3>
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200">Genéticas en Cultivo</h3>
+                    <button id="manage-genetics-btn" class="btn-secondary btn-base py-1 px-3 rounded-md text-sm">Gestionar</button>
+                </div>
                 <ul class="space-y-2">
                     ${geneticsListHTML}
                 </ul>
             </div>
 
-            ${cultivationDetailsHTML} <div id="timeline-container" class="my-2"></div>
+            ${cultivationDetailsHTML}
+
+            <div id="timeline-container" class="my-2"></div>
             <main>
                 ${actionButtonsHTML}
             </main>
         </div>
     `;
     setTimeout(() => {
+        // ... (el resto de los listeners existentes)
         document.querySelectorAll('.add-log-for-week-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -979,6 +985,15 @@ export function renderCicloDetails(ciclo, handlers) {
         const finalizarBtn = getEl('finalizar-ciclo-btn');
         if (finalizarBtn) {
             finalizarBtn.addEventListener('click', () => handlers.openFinalizarCicloModal(ciclo));
+        }
+
+        // Nuevo listener para nuestro botón de gestionar
+        const manageGeneticsBtn = getEl('manage-genetics-btn');
+        if (manageGeneticsBtn) {
+            manageGeneticsBtn.addEventListener('click', () => {
+                // Llamará a un handler que crearemos en el siguiente paso
+                handlers.openManageGeneticsModal(ciclo.id);
+            });
         }
         
         try {
