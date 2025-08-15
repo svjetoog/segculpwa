@@ -613,8 +613,12 @@ handleAdminNotificationSubmit: async (e) => {
 
     const targetUserId = getEl('admin-target-uid').value.trim();
     const message = getEl('admin-message').value.trim();
-
-    // ▼▼▼ PEGA AQUÍ LA URL QUE COPIASTE DE LA CONSOLA DE FIREBASE ▼▼▼
+    const payload = {
+        targetUserId: getEl('admin-target-uid').value.trim(),
+        pushTitle: getEl('admin-push-title').value.trim(),
+        pushBody: getEl('admin-push-body').value.trim(),
+        internalMessage: getEl('admin-internal-message').value.trim(),
+    };
     const functionUrl = "https://sendadminnotification-qvh6nbvu2a-uc.a.run.app";
 
     try {
@@ -635,7 +639,7 @@ handleAdminNotificationSubmit: async (e) => {
                 // 4. Adjuntamos el token manualmente en el encabezado
                 'Authorization': `Bearer ${token}`
             },
-            body: JSON.stringify({ targetUserId, message })
+            body: JSON.stringify(payload)
         });
 
         if (!response.ok) {
@@ -651,8 +655,9 @@ handleAdminNotificationSubmit: async (e) => {
     } catch (error) {
         console.error("Error al llamar a la Cloud Function:", error);
         showNotification(`Error: ${error.message}`, 'error');
+    } finally {
         submitBtn.disabled = false;
-        submitBtn.textContent = 'Enviar Mensaje';
+        submitBtn.textContent = 'Enviar Mensajes';
     }
 },
     updateAdminUI: () => {

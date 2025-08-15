@@ -2675,15 +2675,33 @@ export function openAdminNotificationModal(handlers) {
     const modal = getEl('adminNotificationModal');
     const title = 'Enviar Notificación a Usuario';
     const content = `
-        <div class="space-y-4">
+        <div class="space-y-6">
             <div>
                 <label for="admin-target-uid" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">User ID de Destino</label>
                 <input type="text" id="admin-target-uid" required class="w-full p-2 rounded-md font-mono" placeholder="Pega el UID del usuario aquí">
             </div>
-            <div>
-                <label for="admin-message" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Mensaje</label>
-                <textarea id="admin-message" rows="5" required class="w-full p-2 rounded-md" placeholder="Escribe tu mensaje..."></textarea>
-            </div>
+
+            <fieldset class="border border-gray-300 dark:border-gray-600 p-4 rounded-md">
+                <legend class="px-2 text-sm font-medium">Notificación Push (Externa)</legend>
+                <div class="space-y-3 mt-2">
+                    <div>
+                        <label for="admin-push-title" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Título del Push</label>
+                        <input type="text" id="admin-push-title" required class="w-full p-2 rounded-md" placeholder="Corto y llamativo. Ej: ¡Aviso Importante!">
+                    </div>
+                    <div>
+                        <label for="admin-push-body" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Cuerpo del Push</label>
+                        <input type="text" id="admin-push-body" required class="w-full p-2 rounded-md" placeholder="Mensaje breve para la alerta del sistema.">
+                    </div>
+                </div>
+            </fieldset>
+
+            <fieldset class="border border-gray-300 dark:border-gray-600 p-4 rounded-md">
+                <legend class="px-2 text-sm font-medium">Notificación Interna (En la App)</legend>
+                <div class="mt-2">
+                     <label for="admin-internal-message" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Mensaje Interno Detallado</label>
+                    <textarea id="admin-internal-message" rows="5" required class="w-full p-2 rounded-md" placeholder="Escribe el mensaje completo que se verá en el panel de notificaciones de la app."></textarea>
+                </div>
+            </fieldset>
         </div>
     `;
     modal.innerHTML = createModalHTML(
