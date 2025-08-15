@@ -1,8 +1,10 @@
 // js/main.js
-import { auth, db, functions } from './firebase.js';
+import { auth, db, functions, messaging } from './firebase.js';
 import { onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updatePassword, deleteUser } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { collection, doc, setDoc, addDoc, deleteDoc, onSnapshot, query, serverTimestamp, getDocs, writeBatch, updateDoc, arrayUnion, where, increment, getDoc, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
+import { getToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-messaging.js";
+
 import {
      getEl, showNotification, renderSalasGrid, createCicloCard, createLogEntry,
     renderGeneticsList, renderStockList,
@@ -521,7 +523,52 @@ const handlers = {
     openAdminNotificationModal: () => {
     uiOpenAdminNotificationModal(handlers);
 },
+handleEnableNotifications: async () => {
+        const statusEl = getEl('notificationStatus');
+        try {
+            const permission = await Notification.requestPermission();
 
+            if (permission === 'granted') {
+                statusEl.textContent = '¡Permiso concedido! Obteniendo token de registro...';
+                console.log('Permiso de notificación concedido.');
+
+                // Obtener el token de registro de FCM
+                const vapidKey = 'BLH0VWaPWX1HM9QmY6MPoFrTlLPEMRrvLvqNv1LbRBvtF8LXF68hfu6mnwoJbQOTEOnL3jooP_g0N1mIWTkHVb4'; // ¡IMPORTANTE!
+                const currentToken = await getToken(messaging, { vapidKey: vapidKey });
+
+                if (currentToken) {
+                    console.log('Token de FCM obtenido:', currentToken);
+                    await handlers.saveTokenToFirestore(currentToken);
+                } else {
+                    statusEl.textContent = 'No se pudo obtener el token. Asegúrate de que no estés en modo incógnito.';
+                    console.log('No se pudo obtener el token de registro.');
+                }
+            } else {
+                statusEl.textContent = 'Permiso denegado. Puedes cambiarlo en los ajustes de tu navegador.';
+                console.log('No se pudo obtener el permiso para la notificación.');
+            }
+        } catch (error) {
+            statusEl.textContent = 'Ocurrió un error al solicitar el permiso.';
+            console.error('Ocurrió un error al obtener el token de FCM', error);
+        }
+    },
+
+    saveTokenToFirestore: async (token) => {
+        if (!userId) return;
+
+        try {
+            const userDocRef = doc(db, 'users', userId);
+            // arrayUnion solo añade el token si no existe, evitando duplicados.
+            await updateDoc(userDocRef, {
+                fcmTokens: arrayUnion(token)
+            });
+            showNotification('¡Notificaciones activadas con éxito!');
+            getEl('notificationStatus').textContent = '¡Todo listo! Recibirás notificaciones importantes.';
+        } catch (error) {
+            console.error('Error al guardar el token en Firestore', error);
+            showNotification('No se pudo guardar la configuración de notificaciones.', 'error');
+        }
+    },
 handleAdminNotificationSubmit: async (e) => {
     e.preventDefault();
     const submitBtn = e.target.querySelector('button[type="submit"]');
@@ -1673,6 +1720,8 @@ handlePhenoCardUpdate: async (e) => {
         getEl('backToPanelFromSettingsBtn').addEventListener('click', handlers.hideSettingsView);
         getEl('changePasswordForm').addEventListener('submit', handlers.handleChangePassword);
         getEl('deleteAccountBtn').addEventListener('click', handlers.handleDeleteAccount);
+        getEl('enableNotificationsBtn').addEventListener('click', handlers.handleEnableNotifications);
+        
         handlers.initializeTheme();
     },
     hideSettingsView: () => {

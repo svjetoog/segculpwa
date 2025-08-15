@@ -1,6 +1,7 @@
 {
   "name": "Seguimiento de Cultivo",
   "short_name": "SegCul",
+  "gcm_sender_id": "103953800507",
   "description": "Una herramienta para el seguimiento detallado de ciclos de cultivo.",
   "start_url": "/",
   "display": "standalone",

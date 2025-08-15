@@ -1109,6 +1109,18 @@ export function renderSettingsView() {
                     <button id="theme-toggle" class="btn-secondary btn-base p-2 rounded-full"></button>
                 </div>
             </div>
+
+            <div class="card p-6">
+                <h2 class="text-xl font-bold text-amber-400 mb-4">Notificaciones Push</h2>
+                <p class="text-gray-500 dark:text-gray-400 mb-4 text-sm">
+                    Activa las notificaciones para recibir avisos importantes sobre tus
+                    cultivos y mensajes del administrador, incluso con la app cerrada.
+                </p>
+                <button id="enableNotificationsBtn" class="btn-primary btn-base py-2 px-4 rounded-lg">
+                    Activar Notificaciones
+                </button>
+                <p id="notificationStatus" class="text-xs text-gray-400 mt-3"></p>
+            </div>
             <div class="card p-6">
                 <h2 class="text-xl font-bold text-amber-400 mb-4">Cambiar Contraseña</h2>
                 <form id="changePasswordForm" class="space-y-4">

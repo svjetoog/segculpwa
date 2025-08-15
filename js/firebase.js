@@ -3,6 +3,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebas
 import { getAuth } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { getFirestore } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { getFunctions } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
+import { getMessaging } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-messaging.js";
 
 const prodConfig = {
     apiKey: "AIzaSyC3OUQBy8VpjDCBllgsCGu3sDQoGO-G8w0",
@@ -34,5 +35,6 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const functions = getFunctions(app);
+const messaging = getMessaging(app);
 
-export { auth, db, functions };
+export { auth, db, functions, messaging };
