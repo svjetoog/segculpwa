@@ -1,70 +1,72 @@
-const functions = require("firebase-functions");
 const admin = require("firebase-admin");
-const cors = require("cors")({origin: true});
+// La importación de v2 para funciones HTTP (onRequest)
+const {onRequest} = require("firebase-functions/v2/https");
+// La importación de v2 para funciones programadas (onSchedule)
 const {onSchedule} = require("firebase-functions/v2/scheduler");
 
 admin.initializeApp();
 const db = admin.firestore();
 
 // --- FUNCIÓN DE ADMIN ACTUALIZADA ---
-exports.sendAdminNotification = functions.https.onRequest((request, response) => {
-  cors(request, response, async () => {
-    if (
-      !request.headers.authorization ||
-      !request.headers.authorization.startsWith("Bearer ")
-    ) {
-      response.status(401).send("Unauthorized");
-      return;
-    }
-    const idToken = request.headers.authorization.split("Bearer ")[1];
-    let decodedIdToken;
-    try {
-      decodedIdToken = await admin.auth().verifyIdToken(idToken);
-    } catch (error) {
-      response.status(401).send("Unauthorized");
-      return;
-    }
-
-    try {
-      const callerUid = decodedIdToken.uid;
-      const userDoc = await db.collection("users").doc(callerUid).get();
-      if (!userDoc.exists || userDoc.data().role !== "admin") {
-        response.status(403).send("Forbidden");
+exports.sendAdminNotification = onRequest(
+    {cors: true},
+    // La lógica de la función va dentro
+    async (request, response) => {
+      if (
+        !request.headers.authorization ||
+        !request.headers.authorization.startsWith("Bearer ")
+      ) {
+        response.status(401).send("Unauthorized");
+        return;
+      }
+      const idToken = request.headers.authorization.split("Bearer ")[1];
+      let decodedIdToken;
+      try {
+        decodedIdToken = await admin.auth().verifyIdToken(idToken);
+      } catch (error) {
+        response.status(401).send("Unauthorized");
         return;
       }
 
-      const {
-        targetUserId, pushTitle, pushBody, internalMessage,
-      } = request.body;
-      if (!targetUserId || !internalMessage || !pushTitle || !pushBody) {
-        response.status(400).send("Bad Request: Faltan campos.");
-        return;
+      try {
+        const callerUid = decodedIdToken.uid;
+        const userDoc = await db.collection("users").doc(callerUid).get();
+        if (!userDoc.exists || userDoc.data().role !== "admin") {
+          response.status(403).send("Forbidden");
+          return;
+        }
+
+        const {
+          targetUserId, pushTitle, pushBody, internalMessage,
+        } = request.body;
+        if (!targetUserId || !internalMessage || !pushTitle || !pushBody) {
+          response.status(400).send("Bad Request: Faltan campos.");
+          return;
+        }
+
+        await db.collection("users").doc(targetUserId).collection("notifications")
+            .add({
+              message: internalMessage,
+              timestamp: admin.firestore.FieldValue.serverTimestamp(),
+              read: false,
+              tipo: "admin_direct",
+              enlace: "#",
+            });
+
+        await sendPushNotification(targetUserId, {
+          title: pushTitle,
+          body: pushBody,
+        });
+
+        response.status(200).send({
+          success: true, message: "Notificaciones enviadas con éxito.",
+        });
+      } catch (error) {
+        console.error("Error detallado en sendAdminNotification:", error);
+        response.status(500).send("Internal Server Error");
       }
+    });
 
-      await db.collection("users").doc(targetUserId).collection("notifications")
-          .add({
-            message: internalMessage,
-            timestamp: admin.firestore.FieldValue.serverTimestamp(),
-            read: false,
-            tipo: "admin_direct",
-            enlace: "#",
-          });
-
-      await sendPushNotification(targetUserId, {
-        title: pushTitle,
-        body: pushBody,
-      });
-
-      response.status(200).send({
-        success: true, message: "Notificaciones enviadas con éxito.",
-      });
-    } catch (error) {
-      // Este es el console.error mejorado para el diagnóstico
-      console.error("Error detallado en sendAdminNotification:", error);
-      response.status(500).send("Internal Server Error");
-    }
-  });
-});
 
 // --- FUNCIÓN PROGRAMADA ACTUALIZADA ---
 exports.scheduledDailyNotifications = onSchedule({
