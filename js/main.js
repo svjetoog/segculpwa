@@ -516,6 +516,7 @@ async function runDataMigration(userId) {
 }
 
 const handlers = {
+
     handleOpenCuradoModal: () => {
         // Llama a la función de UI que creamos en el paso anterior
         openCuradoModal(currentFrascos, handlers);
@@ -523,6 +524,41 @@ const handlers = {
     openAdminNotificationModal: () => {
     uiOpenAdminNotificationModal(handlers);
 },
+updateNotificationUIStatus: () => {
+        if (!('Notification' in window)) {
+            console.log("Este navegador no soporta notificaciones push.");
+            // Opcional: Ocultar toda la sección de notificaciones
+            const notificationCard = getEl('enableNotificationsBtn')?.closest('.card');
+            if(notificationCard) notificationCard.innerHTML = '<p class="text-sm text-gray-400">Tu navegador no es compatible con las notificaciones push.</p>';
+            return;
+        }
+
+        const btn = getEl('enableNotificationsBtn');
+        const statusEl = getEl('notificationStatus');
+        
+        if (!btn || !statusEl) return;
+
+        if (Notification.permission === 'granted') {
+            btn.textContent = 'Notificaciones Activadas';
+            btn.disabled = true;
+            btn.classList.remove('btn-primary');
+            btn.classList.add('btn-secondary');
+            statusEl.innerHTML = '<span class="text-green-500 font-semibold">✔</span> Ya has concedido permiso para recibir notificaciones.';
+        } else if (Notification.permission === 'denied') {
+            btn.textContent = 'Notificaciones Bloqueadas';
+            btn.disabled = true;
+            btn.classList.remove('btn-primary');
+            btn.classList.add('btn-danger');
+            statusEl.textContent = 'Has bloqueado las notificaciones. Para activarlas, debes cambiar los permisos en los ajustes de tu navegador.';
+        } else { // 'default'
+            btn.textContent = 'Activar Notificaciones';
+            btn.disabled = false;
+            btn.classList.add('btn-primary');
+            btn.classList.remove('btn-secondary', 'btn-danger');
+            statusEl.textContent = '';
+        }
+    },
+
 handleEnableNotifications: async () => {
         const statusEl = getEl('notificationStatus');
         try {
@@ -1723,6 +1759,7 @@ handlePhenoCardUpdate: async (e) => {
         getEl('enableNotificationsBtn').addEventListener('click', handlers.handleEnableNotifications);
         
         handlers.initializeTheme();
+        handlers.updateNotificationUIStatus();
     },
     hideSettingsView: () => {
         const view = getEl('settingsView');
