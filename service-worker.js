@@ -3,7 +3,7 @@ importScripts("https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"
 importScripts("https://www.gstatic.com/firebasejs/11.6.1/firebase-messaging-compat.js");
 
 // Nombre y versión del caché. Cambiar la versión fuerza la actualización del caché.
-const CACHE_NAME = 'segcul-cache-v0.46bc';
+const CACHE_NAME = 'segcul-cache-v0.46c';
 
 // Archivos esenciales de la aplicación (el "App Shell") que se guardarán para funcionar offline.
 const urlsToCache = [

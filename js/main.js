@@ -2364,7 +2364,7 @@ onAuthStateChanged(auth, async user => {
         loadNotifications();
         initializeEventListeners(handlers);
         handlers.updateAdminUI(); // <--- Llamamos a la nueva función para mostrar/ocultar el botón
-
+        
     } else {
         userId = null;
         currentUserRole = 'user'; // Reseteamos el rol al cerrar sesión

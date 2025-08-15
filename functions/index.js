@@ -28,7 +28,7 @@ exports.sendAdminNotification = functions.https.onRequest((request, response) =>
     try {
       const callerUid = decodedIdToken.uid;
       const userDoc = await db.collection("users").doc(callerUid).get();
-      if (!userDoc.exists() || userDoc.data().role !== "admin") {
+      if (!userDoc.exists || userDoc.data().role !== "admin") {
         response.status(403).send("Forbidden");
         return;
       }
@@ -59,7 +59,8 @@ exports.sendAdminNotification = functions.https.onRequest((request, response) =>
         success: true, message: "Notificaciones enviadas con éxito.",
       });
     } catch (error) {
-      console.error("Error processing request:", error);
+      // Este es el console.error mejorado para el diagnóstico
+      console.error("Error detallado en sendAdminNotification:", error);
       response.status(500).send("Internal Server Error");
     }
   });
@@ -174,11 +175,14 @@ async function sendPushNotification(userId, payload) {
     return;
   }
 
-  const tokens = userDoc.data().fcmTokens;
-  if (!tokens || tokens.length === 0) {
+  const userData = userDoc.data();
+  if (!userData.fcmTokens || userData.fcmTokens.length === 0) {
     console.log(`Usuario ${userId} no tiene tokens para notificaciones push.`);
     return;
   }
+  const tokens = userData.fcmTokens;
+
+  console.log("Tokens a los que se enviará:", tokens);
 
   const message = {
     notification: {
@@ -188,13 +192,25 @@ async function sendPushNotification(userId, payload) {
     tokens: tokens,
   };
 
+  console.log(
+      "Objeto 'message' completo que se envía a FCM:",
+      JSON.stringify(message, null, 2),
+  );
+
   try {
-    const response = await admin.messaging().sendEachForTokens(message);
-    console.log("Notificación push enviada con éxito a", userId);
+    // --- LÍNEA CORREGIDA ---
+    // El método correcto es sendMulticast, no sendEachForTokens.
+    const response = await admin.messaging().sendMulticast(message);
+    // --- FIN DE LA CORRECCIÓN ---
+
+    console.log("Respuesta de FCM recibida para el usuario:", userId);
+    console.log("Éxitos:", response.successCount, "Fallos:", response.failureCount);
+
     const tokensToRemove = [];
     response.responses.forEach((result, index) => {
       if (!result.success) {
         const error = result.error;
+        console.log("Fallo al enviar al token:", tokens[index], error);
         if (
           error.code === "messaging/registration-token-not-registered" ||
           error.code === "messaging/invalid-registration-token"
@@ -203,6 +219,7 @@ async function sendPushNotification(userId, payload) {
         }
       }
     });
+
     if (tokensToRemove.length > 0) {
       await userDoc.ref.update({
         fcmTokens: admin.firestore.FieldValue.arrayRemove(...tokensToRemove),
@@ -210,7 +227,7 @@ async function sendPushNotification(userId, payload) {
       console.log("Tokens inválidos eliminados para el usuario", userId);
     }
   } catch (error) {
-    console.error("Error al enviar notificación push:", error);
+    console.error("Error grave al intentar enviar notificación push:", error);
   }
 }
 
