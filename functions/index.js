@@ -1,6 +1,7 @@
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const cors = require("cors")({origin: true});
+const {onSchedule} = require("firebase-functions/v2/scheduler");
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -60,3 +61,131 @@ exports.sendAdminNotification = functions.https.onRequest((request, response) =>
     }
   });
 });
+
+exports.scheduledDailyNotifications = onSchedule({
+  schedule: "1 0 * * *",
+  timeZone: "America/Argentina/Buenos_Aires",
+  region: "us-central1",
+}, async (event) => {
+  console.log("Iniciando tarea diaria de notificaciones (v2)...");
+
+  const usersSnapshot = await db.collection("users").get();
+  if (usersSnapshot.empty) {
+    console.log("No hay usuarios para procesar.");
+    return null;
+  }
+
+  const promises = usersSnapshot.docs.map((userDoc) =>
+    processUserNotifications(userDoc.id),
+  );
+
+  await Promise.all(promises);
+  console.log("Tarea diaria de notificaciones (v2) completada.");
+  return null;
+});
+
+/**
+ * Procesa todas las notificaciones pendientes para un único usuario.
+ * @param {string} userId El ID del usuario a procesar.
+ */
+async function processUserNotifications(userId) {
+  const now = new Date();
+  const notificationsRef = db.collection(`users/${userId}/notifications`);
+
+  // --- 1. Lógica para Recordatorios de Curado ---
+  const frascosSnapshot = await db.collection(`users/${userId}/frascos`).get();
+  if (!frascosSnapshot.empty) {
+    for (const frascoDoc of frascosSnapshot.docs) {
+      const frasco = frascoDoc.data();
+      const fechaEnfrascado = frasco.fechaEnfrascado.toDate();
+      const diasCurado = Math.round(
+          (now - fechaEnfrascado) / (1000 * 60 * 60 * 24),
+      );
+
+      if (diasCurado === 5 || diasCurado === 10) {
+        const message = `Tips de Curado: Tu frasco de "${frasco.nombreCosecha}"` +
+          ` llegó al día ${diasCurado}. ¡Buen momento para un chequeo!`;
+        await createNotificationIfNotExists(
+            notificationsRef, "curado", message, frascoDoc.id,
+        );
+      }
+    }
+  }
+
+  // --- 2. Lógica para Hitos de Ciclos ---
+  const ciclosActivosSnapshot = await db.collection(`users/${userId}/ciclos`)
+      .where("estado", "==", "activo").get();
+
+  if (!ciclosActivosSnapshot.empty) {
+    for (const cicloDoc of ciclosActivosSnapshot.docs) {
+      const ciclo = cicloDoc.data();
+      const startDateString = ciclo.phase === "Floración" ?
+        ciclo.floweringStartDate : ciclo.vegetativeStartDate;
+
+      if (!startDateString) continue;
+
+      const startDate = new Date(startDateString + "T00:00:00Z");
+      const diasDesdeInicio = Math.floor(
+          (now - startDate) / (1000 * 60 * 60 * 24),
+      ) + 1;
+
+      // --- 2a. Hito de Nueva Semana ---
+      if (diasDesdeInicio > 1 && (diasDesdeInicio - 1) % 7 === 0) {
+        const semanaNum = Math.floor((diasDesdeInicio - 1) / 7) + 1;
+        const message = `¡Nueva Semana! Tu ciclo "${ciclo.name}" comienza la ` +
+          `semana ${semanaNum} de ${ciclo.phase}.`;
+        await createNotificationIfNotExists(
+            notificationsRef, "semana", message, cicloDoc.id,
+        );
+      }
+
+      // --- 2b. Sugerencia de Fin de Ciclo ---
+      const {phase, floweringWeeks} = ciclo;
+      if (phase === "Floración" && floweringWeeks && floweringWeeks.length > 0) {
+        const totalSemanas = floweringWeeks.length;
+        const diaInicioUltimaSemana = (totalSemanas - 1) * 7 + 1;
+
+        if (diasDesdeInicio === diaInicioUltimaSemana) {
+          const message = `Recta Final: Tu ciclo "${ciclo.name}" está en su ` +
+            "última semana. Es un buen momento para revisar los tricomas y " +
+            "planificar los días finales.";
+          await createNotificationIfNotExists(
+              notificationsRef, "accion", message, cicloDoc.id,
+          );
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Crea una notificación solo si no existe una del mismo tipo y para el
+ * mismo ítem, evitando duplicados para el usuario.
+ * @param {FirebaseFirestore.CollectionReference} ref La referencia a la
+ * colección de notificaciones del usuario.
+ * @param {string} tipo El tipo de notificación (ej: 'curado').
+ * @param {string} message El mensaje a mostrar.
+ * @param {string} itemId El ID del ciclo o frasco al que se refiere.
+ */
+async function createNotificationIfNotExists(ref, tipo, message, itemId) {
+  const link = `/${tipo}/${itemId}`;
+
+  const existingNotifQuery = await ref.where("read", "==", false)
+      .where("tipo", "==", tipo)
+      .where("enlace", "==", link)
+      .limit(1)
+      .get();
+
+  if (existingNotifQuery.empty) {
+    await ref.add({
+      message: message,
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      read: false,
+      tipo: tipo,
+      enlace: link,
+    });
+    console.log(`Notificación creada para ${itemId}: ${message}`);
+  } else {
+    console.log(`Notificación omitida (ya existe) para el item ${itemId}`);
+  }
+}
