@@ -607,43 +607,41 @@ handleEnableNotifications: async () => {
     },
 handleAdminNotificationSubmit: async (e) => {
     e.preventDefault();
-    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const form = e.target;
+    const submitBtn = form.querySelector('button[type="submit"]');
     submitBtn.disabled = true;
     submitBtn.textContent = 'Enviando...';
 
-    const targetUserId = getEl('admin-target-uid').value.trim();
-    const message = getEl('admin-message').value.trim();
+    // --- LÓGICA CORREGIDA ---
+    // Recogemos los valores de los NUEVOS campos del modal actualizado
     const payload = {
         targetUserId: getEl('admin-target-uid').value.trim(),
         pushTitle: getEl('admin-push-title').value.trim(),
         pushBody: getEl('admin-push-body').value.trim(),
         internalMessage: getEl('admin-internal-message').value.trim(),
     };
+    // --- FIN DE LA CORRECCIÓN ---
+
     const functionUrl = "https://sendadminnotification-qvh6nbvu2a-uc.a.run.app";
 
     try {
-        // 1. Nos aseguramos de que el usuario esté logueado
         const currentUser = auth.currentUser;
         if (!currentUser) {
             throw new Error("No hay un usuario autenticado.");
         }
 
-        // 2. Obtenemos su token de autenticación
         const token = await currentUser.getIdToken();
 
-        // 3. Hacemos una llamada HTTP estándar (fetch)
         const response = await fetch(functionUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                // 4. Adjuntamos el token manualmente en el encabezado
-                'Authorization': `Bearer ${token}`
+                'Authorization': `Bearer ${token}`,
             },
-            body: JSON.stringify(payload)
+            body: JSON.stringify(payload), // Enviamos el payload correcto
         });
 
         if (!response.ok) {
-            // Intenta leer el error del servidor si lo hay
             const errorText = await response.text();
             throw new Error(errorText || 'El servidor devolvió un error.');
         }
