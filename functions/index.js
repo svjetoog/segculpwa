@@ -69,12 +69,30 @@ exports.scheduledDailyNotifications = onSchedule({
 }, async (event) => {
   console.log("Iniciando tarea diaria de notificaciones (v2)...");
 
-  const usersSnapshot = await db.collection("users").get();
+  // --- LÓGICA DE REINTENTO AÑADIDA ---
+  let usersSnapshot = await db.collection("users").get();
+
+  // Si el primer intento devuelve un resultado vacío, esperamos y reintentamos.
   if (usersSnapshot.empty) {
-    console.log("No hay usuarios para procesar.");
+    console.log(
+        "El primer intento no encontró usuarios. " +
+        "Esperando 2 segundos para reintentar (posible cold start)...",
+    );
+    // Pequeña pausa de 2 segundos
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    // Segundo intento
+    usersSnapshot = await db.collection("users").get();
+  }
+  // --- FIN DE LA LÓGICA DE REINTENTO ---
+
+
+  if (usersSnapshot.empty) {
+    console.log("No se encontraron usuarios tras el reintento. Terminando.");
     return null;
   }
 
+  // Si llegamos aquí, es porque SÍ encontró usuarios.
+  console.log(`Procesando notificaciones para ${usersSnapshot.size} usuarios.`);
   const promises = usersSnapshot.docs.map((userDoc) =>
     processUserNotifications(userDoc.id),
   );
@@ -83,6 +101,7 @@ exports.scheduledDailyNotifications = onSchedule({
   console.log("Tarea diaria de notificaciones (v2) completada.");
   return null;
 });
+
 
 /**
  * Procesa todas las notificaciones pendientes para un único usuario.
