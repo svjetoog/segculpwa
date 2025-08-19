@@ -265,3 +265,61 @@ async function createNotificationIfNotExists(ref, tipo, message, itemId) {
   console.log(`Notificación interna omitida (ya existe) para ${itemId}`);
   return false;
 }
+exports.sendAdminPushV2 = onRequest(
+    {cors: true},
+    async (request, response) => {
+      // Esta función es una copia de la anterior para forzar una reconstrucción limpia.
+      if (
+        !request.headers.authorization ||
+        !request.headers.authorization.startsWith("Bearer ")
+      ) {
+        response.status(401).send("Unauthorized");
+        return;
+      }
+      const idToken = request.headers.authorization.split("Bearer ")[1];
+      let decodedIdToken;
+      try {
+        decodedIdToken = await admin.auth().verifyIdToken(idToken);
+      } catch (error) {
+        response.status(401).send("Unauthorized");
+        return;
+      }
+
+      try {
+        const callerUid = decodedIdToken.uid;
+        const userDoc = await db.collection("users").doc(callerUid).get();
+        if (!userDoc.exists || userDoc.data().role !== "admin") {
+          response.status(403).send("Forbidden");
+          return;
+        }
+
+        const {
+          targetUserId, pushTitle, pushBody, internalMessage,
+        } = request.body;
+        if (!targetUserId || !internalMessage || !pushTitle || !pushBody) {
+          response.status(400).send("Bad Request: Faltan campos.");
+          return;
+        }
+
+        await db.collection("users").doc(targetUserId).collection("notifications")
+            .add({
+              message: internalMessage,
+              timestamp: admin.firestore.FieldValue.serverTimestamp(),
+              read: false,
+              tipo: "admin_direct",
+              enlace: "#",
+            });
+
+        await sendPushNotification(targetUserId, {
+          title: pushTitle,
+          body: pushBody,
+        });
+
+        response.status(200).send({
+          success: true, message: "Notificaciones (v2) enviadas con éxito.",
+        });
+      } catch (error) {
+        console.error("Error detallado en sendAdminPushV2:", error);
+        response.status(500).send("Internal Server Error V2");
+      }
+    });

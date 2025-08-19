@@ -622,7 +622,7 @@ handleAdminNotificationSubmit: async (e) => {
     };
     // --- FIN DE LA CORRECCIÓN ---
 
-    const functionUrl = "https://sendadminnotification-qvh6nbvu2a-uc.a.run.app";
+    const functionUrl = "https://sendadminpushv2-qvh6nbvu2a-uc.a.run.app";
 
     try {
         const currentUser = auth.currentUser;
