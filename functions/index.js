@@ -10,11 +10,10 @@ const db = admin.firestore();
 // --- FUNCIÓN DE ADMIN ACTUALIZADA ---
 exports.sendAdminNotification = onRequest(
     {cors: true},
-    // La lógica de la función va dentro
     async (request, response) => {
       if (
         !request.headers.authorization ||
-        !request.headers.authorization.startsWith("Bearer ")
+      !request.headers.authorization.startsWith("Bearer ")
       ) {
         response.status(401).send("Unauthorized");
         return;
@@ -79,7 +78,7 @@ exports.scheduledDailyNotifications = onSchedule({
   if (usersSnapshot.empty) {
     console.log(
         "El primer intento no encontró usuarios. " +
-        "Esperando 2 segundos para reintentar (posible cold start)...",
+      "Esperando 2 segundos para reintentar (posible cold start)...",
     );
     await new Promise((resolve) => setTimeout(resolve, 2000));
     usersSnapshot = await db.collection("users").get();
@@ -114,7 +113,7 @@ async function processUserNotifications(userId) {
           (now - frasco.fechaEnfrascado.toDate()) / (1000 * 60 * 60 * 24),
       );
       if (diasCurado === 5 || diasCurado === 10) {
-        const message = `Tu frasco de "${frasco.nombreCosecha}"`+
+        const message = `Tu frasco de "${frasco.nombreCosecha}"` +
           ` llegó al día ${diasCurado}. ¡Buen momento para un chequeo!`;
         const notifCreated = await createNotificationIfNotExists(
             notificationsRef, "curado", message, frascoDoc.id,
@@ -142,7 +141,7 @@ async function processUserNotifications(userId) {
 
       const diasDesdeInicio = Math.floor(
           (now - new Date(startDateString + "T00:00:00Z")) /
-          (1000 * 60 * 60 * 24),
+        (1000 * 60 * 60 * 24),
       ) + 1;
 
       if (diasDesdeInicio > 1 && (diasDesdeInicio - 1) % 7 === 0) {
@@ -186,24 +185,23 @@ async function sendPushNotification(userId, payload) {
 
   console.log("Tokens a los que se enviará:", tokens);
 
-  const message = {
+  // --- CAMBIO #1: Construimos un array de mensajes individuales ---
+  const messages = tokens.map((token) => ({
     notification: {
       title: payload.title,
       body: payload.body,
     },
-    tokens: tokens,
-  };
+    token: token, // Cada mensaje apunta a un único token
+  }));
 
   console.log(
-      "Objeto 'message' completo que se envía a FCM:",
-      JSON.stringify(message, null, 2),
+      `Construidos ${messages.length} mensajes para enviar con sendEach.`,
   );
 
   try {
-    // --- LÍNEA CORREGIDA ---
-    // El método correcto es sendMulticast, no sendEachForTokens.
-    const response = await admin.messaging().sendMulticast(message);
-    // --- FIN DE LA CORRECCIÓN ---
+    // --- CAMBIO #2: Usamos el método sendEach en lugar de sendMulticast ---
+    const response = await admin.messaging().sendEach(messages);
+    // --- FIN DEL CAMBIO ---
 
     console.log("Respuesta de FCM recibida para el usuario:", userId);
     console.log("Éxitos:", response.successCount, "Fallos:", response.failureCount);
@@ -268,10 +266,9 @@ async function createNotificationIfNotExists(ref, tipo, message, itemId) {
 exports.sendAdminPushV2 = onRequest(
     {cors: true},
     async (request, response) => {
-      // Esta función es una copia de la anterior para forzar una reconstrucción limpia.
       if (
         !request.headers.authorization ||
-        !request.headers.authorization.startsWith("Bearer ")
+      !request.headers.authorization.startsWith("Bearer ")
       ) {
         response.status(401).send("Unauthorized");
         return;
@@ -323,3 +320,52 @@ exports.sendAdminPushV2 = onRequest(
         response.status(500).send("Internal Server Error V2");
       }
     });
+const {google} = require("googleapis");
+
+exports.diagnoseFcm = onRequest({cors: true}, async (request, response) => {
+  const results = {
+    projectId: null,
+    authSuccess: false,
+    accessToken: null,
+    fcmApiEnabled: null,
+    error: null,
+  };
+
+  try {
+    // 1. Verificar el ID del proyecto desde el entorno
+    results.projectId = process.env.GCLOUD_PROJECT || admin.instanceId().app.options.projectId;
+    console.log(`[Diagnóstico] Proyecto detectado: ${results.projectId}`);
+
+    if (!results.projectId) {
+      throw new Error("No se pudo detectar el ID del proyecto.");
+    }
+
+    // 2. Intentar obtener un token de acceso para verificar la autenticación
+    const accessTokenData = await admin.app().options.credential.getAccessToken();
+    results.accessToken = accessTokenData.access_token.substring(0, 20) + "..."; // No mostrar el token completo
+    results.authSuccess = true;
+    console.log("[Diagnóstico] Autenticación exitosa. Se obtuvo el token de acceso.");
+
+    // 3. Usar la API de Service Usage para verificar si FCM está habilitado
+    const auth = new google.auth.GoogleAuth({
+      scopes: ["https://www.googleapis.com/auth/cloud-platform"],
+    });
+    const authClient = await auth.getClient();
+    const serviceUsage = google.serviceusage({version: "v1", auth: authClient});
+
+    const fcmApiName = `projects/${results.projectId}/services/fcm.googleapis.com`;
+
+    console.log(`[Diagnóstico] Verificando el estado de la API: ${fcmApiName}`);
+
+    const res = await serviceUsage.services.get({name: fcmApiName});
+
+    results.fcmApiEnabled = res.data.state === "ENABLED";
+    console.log(`[Diagnóstico] Estado de la API de FCM: ${res.data.state}`);
+
+    response.status(200).send(results);
+  } catch (e) {
+    console.error("[Diagnóstico] Ocurrió un error:", e);
+    results.error = e.message;
+    response.status(500).send(results);
+  }
+});
