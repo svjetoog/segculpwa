@@ -1221,6 +1221,7 @@ handlePhenoCardUpdate: async (e) => {
     },
     showPhenohuntWorkspace: (hunt) => {
         handlers.hideAllViews();
+        getEl('app').classList.add('hidden');
         const view = getEl('phenohuntDetailView');
         renderPhenohuntWorkspace(hunt, handlers);
         view.classList.remove('hidden');
@@ -1607,6 +1608,7 @@ handlePhenoCardUpdate: async (e) => {
         currentSalaId = salaId;
         currentSalaName = salaName;
         handlers.hideAllViews();
+        getEl('app').classList.add('hidden');
         const view = getEl('ciclosView');
         view.classList.remove('hidden');
         view.classList.add('view-container');
@@ -1671,6 +1673,7 @@ handlePhenoCardUpdate: async (e) => {
         }
 
         handlers.hideAllViews();
+        getEl('app').classList.add('hidden');
         const detailView = getEl('cicloDetailView');
         detailView.innerHTML = renderCicloDetails(ciclo, handlers);
         detailView.classList.remove('hidden');
@@ -1716,6 +1719,7 @@ handlePhenoCardUpdate: async (e) => {
     },
     showToolsView: () => {
         handlers.hideAllViews();
+        getEl('app').classList.add('hidden');
         const toolsView = getEl('toolsView');
         toolsView.innerHTML = renderToolsView();
         toolsView.classList.remove('hidden');
@@ -1751,6 +1755,7 @@ handlePhenoCardUpdate: async (e) => {
     },
     showSettingsView: () => {
         handlers.hideAllViews();
+        getEl('app').classList.add('hidden');
         const settingsView = getEl('settingsView');
         settingsView.innerHTML = renderSettingsView();
         settingsView.classList.remove('hidden');
