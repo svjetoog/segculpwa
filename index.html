@@ -315,11 +315,9 @@
     </style>
 </head>
 <body class="text-gray-800 dark:text-gray-200">
-
     <div id="initial-loader" class="min-h-screen flex items-center justify-center">
         <div class="spinner"></div>
     </div>
-
     <div id="authView" class="min-h-screen flex items-center justify-center p-4 hidden">
         <div class="w-full max-w-md space-y-8">
             <div class="text-center mb-8">
@@ -382,14 +380,15 @@
             </form>
         </div>
     </div>
-
-    <div id="app" class="p-4 sm:p-6 lg:p-8 hidden">
+    <div id="view-wrapper">
+        <div id="app" class="p-4 sm:p-6 lg:p-8 hidden">
         <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8">
-    <div>
-        <h1 class="text-3xl font-mono tracking-wider font-bold text-amber-400">Panel de Salas</h1>
-        <p id="welcomeUser" class="text-gray-500 dark:text-gray-400 mt-1"></p>
-    </div>
-    <div class="relative mt-4 sm:mt-0 self-end sm:self-auto flex items-center gap-2">
+
+            <div>
+                <h1 class="text-3xl font-mono tracking-wider font-bold text-amber-400">Panel de Salas</h1>
+                <p id="welcomeUser" class="text-gray-500 dark:text-gray-400 mt-1"></p>
+            </div>
+            <div class="relative mt-4 sm:mt-0 self-end sm:self-auto flex items-center gap-2">
 
     <div>
         <button id="notificationsBtn" class="btn-secondary btn-base p-2 rounded-lg shadow-md" title="Notificaciones">
@@ -447,20 +446,17 @@
     <div id="adminMenu" class="absolute right-0 top-full mt-2 w-64 max-w-[calc(100vw-2rem)] bg-white dark:bg-[#262626] border border-gray-200 dark:border-[#404040] rounded-md shadow-lg z-20 hidden">
         <a href="#" id="adminSendDirectNotification" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#404040]">Enviar Notificación a Usuario</a>
     </div>
-</div>
-    
-</div>
-</header>
+            </div>
+        </header>
+
         <main>
             <div class="mb-8">
                 <input type="search" id="searchSalas" placeholder="Buscar sala por nombre..." class="w-full max-w-lg p-2 rounded-md focus:ring-amber-500 focus:border-amber-500">
             </div>
-
             <div id="salasGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6"></div>
             <div id="loadingSalas" class="text-center py-10 text-gray-500 dark:text-gray-400">Cargando salas...</div>
             <div id="emptySalasState" class="text-center py-10 text-gray-500 dark:text-gray-400 hidden">No tienes salas. ¡Añade una para empezar!</div>
         </main>
-        
         <footer class="mt-12 flex flex-col sm:flex-row justify-center items-center gap-4 py-4 text-center">
              <a href="https://t.me/+Uk-oVUNEmTM3YzFh" target="_blank" rel="noopener noreferrer" class="bg-sky-500 hover:bg-sky-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md text-sm transition-colors btn-base" title="Unite al grupo de Telegram">
                  Grupo Telegram
@@ -470,29 +466,27 @@
             </div>
         </footer>
     </div>
-    
-<div id="ciclosView" class="p-4 sm:p-6 lg:p-8 hidden">
-    <header class="flex justify-between items-start mb-8">
+    <div id="ciclosView" class="p-4 sm:p-6 lg:p-8 hidden">
+        <header class="flex justify-between items-start mb-8">
         <div>
             <h1 id="salaNameHeader" class="text-3xl font-bold text-amber-400 font-mono tracking-wider"></h1>
             <p class="text-gray-500 dark:text-gray-400">Ciclos activos en esta sala.</p>
         </div>
         <button id="backToSalasBtn" class="btn-secondary btn-base py-2 px-4 rounded-lg">Volver a Salas</button>
-    </header>
-
-    <div id="emptyCiclosState" class="text-center py-10 text-gray-500 dark:text-gray-400 hidden">
+        </header>
+        <div id="emptyCiclosState" class="text-center py-10 text-gray-500 dark:text-gray-400 hidden">
         <p>Esta sala no tiene ciclos activos.</p>
         <p class="mt-2 text-sm">Puedes añadir uno desde el menú.</p>
-    </div>
-
-    <div id="ciclosGrid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         </div>
-</div>
+        <div id="ciclosGrid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        </div>
+    </div>
     <div id="cicloDetailView" class="p-4 sm:p-6 lg:p-8 hidden"></div>
     <div id="toolsView" class="p-4 sm:p-6 lg:p-8 hidden"></div>
     <div id="settingsView" class="p-4 sm:p-6 lg:p-8 hidden"></div>
     <div id="historialView" class="p-4 sm:p-6 lg:p-8 hidden"></div>
     <div id="phenohuntDetailView" class="p-4 sm:p-6 lg:p-8 hidden"></div>
+</div>
     <div id="salaModal" class="fixed inset-0 modal-backdrop flex items-center justify-center z-50 p-4 hidden"></div>
     <div id="cicloModal" class="fixed inset-0 modal-backdrop flex items-center justify-center z-50 p-4 hidden"></div>
     <div id="logModal" class="fixed inset-0 modal-backdrop flex items-center justify-center z-50 p-4 hidden"></div>
@@ -590,11 +584,10 @@
             </div>
         </div>
     </div>
-
     <div id="notification-container"></div>
+    <div id="adminNotificationModal" class="fixed inset-0 modal-backdrop flex items-center justify-center z-50 p-4 hidden"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/shepherd.js@latest/dist/js/shepherd.min.js"></script>
-    <div id="adminNotificationModal" class="fixed inset-0 modal-backdrop flex items-center justify-center z-50 p-4 hidden"></div>
     <script type="module" defer src="js/main.js"></script>
 </body>
 </html>

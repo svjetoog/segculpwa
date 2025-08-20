@@ -1779,14 +1779,14 @@ const handlers = {
         getEl('app').classList.remove('hidden');
     },
     hideAllViews: () => {
-    ['app', 'ciclosView', 'cicloDetailView', 'toolsView', 'settingsView', 'historialView', 'phenohuntDetailView'].forEach(id => {
-        const el = getEl(id);
-        if (el) {
-            el.classList.add('hidden');
-            el.classList.remove('view-container');
-        }
-    });
-    },
+    const wrapper = getEl('view-wrapper');
+    if (wrapper) {
+        Array.from(wrapper.children).forEach(view => {
+            view.classList.add('hidden');
+            view.classList.remove('view-container');
+        });
+    }
+},
     switchToolsTab: (newTab) => {
         activeToolsTab = newTab;
         ['genetics', 'stock', 'baulSemillas', 'phenohunt', 'historial'].forEach(tab => {
