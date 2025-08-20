@@ -1682,8 +1682,6 @@ const handlers = {
 
         getEl('backToCiclosBtn').addEventListener('click', () => {
             handlers.hideCicloDetails();
-            getEl('app').classList.remove('hidden');
-            getEl('app').classList.add('view-container');
         });
         const addWeekBtn = getEl('add-week-btn');
         if(addWeekBtn) addWeekBtn.addEventListener('click', () => handlers.handleAddWeek(ciclo.id));
@@ -1719,21 +1717,13 @@ const handlers = {
         }
     },
     showToolsView: () => {
-    console.log("--- PAUSA 1: Antes de ocultar. La vista de Salas (#app) debería estar visible.");
-    debugger; // <--- PRIMERA PAUSA. La ejecución se detendrá aquí.
-
-    handlers.hideAllViews();
-    getEl('app').classList.add('hidden');
-    
-    console.log("--- PAUSA 2: Después de ocultar. La vista de Salas (#app) DEBERÍA HABER DESAPARECIDO.");
-    debugger; // <--- SEGUNDA PAUSA. La ejecución se detendrá aquí de nuevo.
-
+    handlers.hideAllViews(); // Oculta todas las vistas usando el nuevo método del view-wrapper
     const toolsView = getEl('toolsView');
     toolsView.innerHTML = renderToolsView();
     toolsView.classList.remove('hidden');
     toolsView.classList.add('view-container');
 
-    // ... (el resto del código de la función, como los addEventListener, se mantiene igual)
+    // Listeners para los botones internos de la vista de Herramientas
     getEl('backToPanelBtn').addEventListener('click', () => {
         destroyToolSortables();
         handlers.hideToolsView();
@@ -1749,7 +1739,7 @@ const handlers = {
     getEl('view-mode-card').addEventListener('click', () => handlers.handleViewModeToggle('card'));
     getEl('view-mode-list').addEventListener('click', () => handlers.handleViewModeToggle('list'));
     getEl('exportCsvBtn').addEventListener('click', handlers.handleExportCSV);
-},
+    },
     hideToolsView: () => {
         const view = getEl('toolsView');
         view.classList.add('hidden');
