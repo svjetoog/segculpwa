@@ -1719,35 +1719,37 @@ const handlers = {
         }
     },
     showToolsView: () => {
-        handlers.hideAllViews();
-        getEl('app').classList.add('hidden');
-        const toolsView = getEl('toolsView');
-        toolsView.innerHTML = renderToolsView();
-        toolsView.classList.remove('hidden');
-        toolsView.classList.add('view-container');
+    console.log("--- PAUSA 1: Antes de ocultar. La vista de Salas (#app) debería estar visible.");
+    debugger; // <--- PRIMERA PAUSA. La ejecución se detendrá aquí.
 
-        handlers.switchToolsTab('genetics');
-        handlers.handleViewModeToggle(toolsViewMode, true);
-        
-        startToolsTour();
+    handlers.hideAllViews();
+    getEl('app').classList.add('hidden');
+    
+    console.log("--- PAUSA 2: Después de ocultar. La vista de Salas (#app) DEBERÍA HABER DESAPARECIDO.");
+    debugger; // <--- SEGUNDA PAUSA. La ejecución se detendrá aquí de nuevo.
 
-        getEl('backToPanelBtn').addEventListener('click', () => {
-            destroyToolSortables();
-            handlers.hideToolsView();
-        });
-        getEl('add-bulk-btn').addEventListener('click', handlers.openBulkAddModal);
-        getEl('add-to-catalog-btn').addEventListener('click', handlers.openAddToCatalogModal);
-        getEl('geneticsTabBtn').addEventListener('click', () => handlers.switchToolsTab('genetics'));
-        getEl('geneticsTabBtn').addEventListener('click', () => handlers.switchToolsTab('genetics'));
-        getEl('stockTabBtn').addEventListener('click', () => handlers.switchToolsTab('stock'));
-        getEl('baulSemillasTabBtn').addEventListener('click', () => handlers.switchToolsTab('baulSemillas'));
-        getEl('phenohuntTabBtn').addEventListener('click', () => handlers.switchToolsTab('phenohunt'));
-        getEl('historialTabBtn').addEventListener('click', () => handlers.switchToolsTab('historial'));
-        getEl('searchTools').addEventListener('input', handlers.handleToolsSearch);
-        getEl('view-mode-card').addEventListener('click', () => handlers.handleViewModeToggle('card'));
-        getEl('view-mode-list').addEventListener('click', () => handlers.handleViewModeToggle('list'));
-        getEl('exportCsvBtn').addEventListener('click', handlers.handleExportCSV);
-    },
+    const toolsView = getEl('toolsView');
+    toolsView.innerHTML = renderToolsView();
+    toolsView.classList.remove('hidden');
+    toolsView.classList.add('view-container');
+
+    // ... (el resto del código de la función, como los addEventListener, se mantiene igual)
+    getEl('backToPanelBtn').addEventListener('click', () => {
+        destroyToolSortables();
+        handlers.hideToolsView();
+    });
+    getEl('add-bulk-btn').addEventListener('click', handlers.openBulkAddModal);
+    getEl('add-to-catalog-btn').addEventListener('click', handlers.openAddToCatalogModal);
+    getEl('geneticsTabBtn').addEventListener('click', () => handlers.switchToolsTab('genetics'));
+    getEl('stockTabBtn').addEventListener('click', () => handlers.switchToolsTab('stock'));
+    getEl('baulSemillasTabBtn').addEventListener('click', () => handlers.switchToolsTab('baulSemillas'));
+    getEl('phenohuntTabBtn').addEventListener('click', () => handlers.switchToolsTab('phenohunt'));
+    getEl('historialTabBtn').addEventListener('click', () => handlers.switchToolsTab('historial'));
+    getEl('searchTools').addEventListener('input', handlers.handleToolsSearch);
+    getEl('view-mode-card').addEventListener('click', () => handlers.handleViewModeToggle('card'));
+    getEl('view-mode-list').addEventListener('click', () => handlers.handleViewModeToggle('list'));
+    getEl('exportCsvBtn').addEventListener('click', handlers.handleExportCSV);
+},
     hideToolsView: () => {
         const view = getEl('toolsView');
         view.classList.add('hidden');
