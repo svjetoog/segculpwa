@@ -595,7 +595,7 @@ const handlers = {
 
         try {
             const userDocRef = doc(db, 'users', userId);
-            // arrayUnion solo añade el token si no existe, evitando duplicados.
+            
             await updateDoc(userDocRef, {
                 fcmTokens: arrayUnion(token)
             });
@@ -613,15 +613,14 @@ const handlers = {
     submitBtn.disabled = true;
     submitBtn.textContent = 'Enviando...';
 
-    // --- LÓGICA CORREGIDA ---
-    // Recogemos los valores de los NUEVOS campos del modal actualizado
+    
     const payload = {
         targetUserId: getEl('admin-target-uid').value.trim(),
         pushTitle: getEl('admin-push-title').value.trim(),
         pushBody: getEl('admin-push-body').value.trim(),
         internalMessage: getEl('admin-internal-message').value.trim(),
     };
-    // --- FIN DE LA CORRECCIÓN ---
+    
 
     const functionUrl = "https://sendadminpushv2-qvh6nbvu2a-uc.a.run.app";
 
@@ -660,7 +659,7 @@ const handlers = {
     }
     },
     updateAdminUI: () => {
-    uiUpdateAdminUI(currentUserRole === 'admin'); // Usamos el nombre importado con el alias
+    uiUpdateAdminUI(currentUserRole === 'admin'); 
     },
     openManageGeneticsModal: (cicloId) => {
         const ciclo = currentCiclos.find(c => c.id === cicloId);
@@ -669,13 +668,11 @@ const handlers = {
             return;
         }
 
-        // Llamamos a la función de la UI que creamos en el paso anterior.
-        // Le pasamos todos los datos que necesita para funcionar.
         uiOpenManageGeneticsModal(
             ciclo, 
             currentGenetics, 
             handlers,
-            handlers.handleManageGeneticsSubmit // Este es el handler que se ejecutará al guardar. Lo crearemos en el próximo paso.
+            handlers.handleManageGeneticsSubmit 
         );
     },
     handleManageGeneticsSubmit: async (cicloId, newGeneticsState) => {
@@ -685,12 +682,8 @@ const handlers = {
             return;
         }
 
-        // Paso 1: Calcular los deltas de stock.
-        // Un delta positivo significa que sobran plantas y vuelven al stock.
-        // Un delta negativo significa que se usaron más plantas del stock.
         const stockDeltas = new Map();
 
-        // Primero, sumamos todo lo que había originalmente. Es como "devolver" todo al stock.
         originalCiclo.genetics.forEach(item => {
             const currentDelta = stockDeltas.get(item.id) || { clone: 0, seed: 0 };
             if (item.source === 'clone') {
@@ -701,7 +694,6 @@ const handlers = {
             stockDeltas.set(item.id, currentDelta);
         });
 
-        // Segundo, restamos el nuevo estado. Es como "sacar" lo necesario del stock.
         newGeneticsState.forEach(item => {
             const currentDelta = stockDeltas.get(item.id) || { clone: 0, seed: 0 };
             if (item.source === 'clone') {
@@ -712,7 +704,6 @@ const handlers = {
             stockDeltas.set(item.id, currentDelta);
         });
 
-        // Paso 2: Ejecutar las actualizaciones en la base de datos de forma atómica.
         try {
             const batch = writeBatch(db);
 
@@ -740,17 +731,17 @@ const handlers = {
                 const geneticEnEstado = currentGenetics.find(g => g.id === item.id);
             
                 if (geneticEnEstado && geneticEnEstado[stockField] === item.quantity) {
-                    // --- MEJORA APLICADA AQUÍ ---
+                    
                     const tipoStock = item.source === 'clone' ? 'clon' : 'semilla';
                     const mensajeStock = `Has usado la última ${tipoStock} de '${item.name}'. Tu stock ahora es 0.`;
-                    // --- FIN DE LA MEJORA ---
+                    
                     await handlers.createNotification(mensajeStock, 'stock', `/tools/genetics/${item.id}`);
                 }
 
                 const itemRef = doc(db, `users/${userId}/genetics`, item.id);
                 batch.update(itemRef, { [stockField]: increment(-item.quantity) });
 
-            } // <-- ERROR DE PUNTO Y COMA CORREGIDO AQUÍ
+            } 
 
             if (cicloData.phase === 'Floración') {
                 cicloData.floweringWeeks = generateStandardWeeks();
@@ -773,30 +764,26 @@ const handlers = {
     },
     handleOpenProfileModal: async () => {
     try {
-        console.log('Abriendo modal de perfil...'); // Detective 1
+        console.log('Abriendo modal de perfil...');
 
-        // 1. Obtener la información del perfil desde Firestore
         const userDocRef = doc(db, 'users', userId);
         const userDoc = await getDoc(userDocRef);
         const profileData = userDoc.exists() ? userDoc.data().publicProfile || {} : {};
 
-        // 2. Obtener la fecha de creación de la cuenta desde Firebase Auth
         const user = auth.currentUser;
         if (user && user.metadata.creationTime) {
             profileData.creationTime = user.metadata.creationTime;
         }
 
-        // 3. Calcular los tipos de cultivo activos (CON LÓGICA MEJORADA)
-        console.log('Ciclos actuales en el estado global:', currentCiclos); // Detective 2
+        console.log('Ciclos actuales en el estado global:', currentCiclos); 
         const activeCiclos = currentCiclos.filter(c => c.estado !== 'en_secado');
-        console.log('Ciclos activos (después de filtrar):', activeCiclos); // Detective 3
+        console.log('Ciclos activos (después de filtrar):', activeCiclos); 
         
         const activeCultivationTypes = [...new Set(
             activeCiclos.map(c => c.cultivationType || 'Sustrato')
         )].filter(Boolean);
-        console.log('Tipos de cultivo calculados:', activeCultivationTypes); // Detective 4
+        console.log('Tipos de cultivo calculados:', activeCultivationTypes); 
 
-        // 4. Llamar a la función de UI para abrir el modal con todos los datos
         openProfileModal(profileData, currentGenetics, activeCultivationTypes, handlers);
 
     } catch (error) {
@@ -805,9 +792,8 @@ const handlers = {
     }
     },
     handleProfileFormSubmit: async (e) => {
-    e.preventDefault(); // Prevenimos que la página se recargue
+    e.preventDefault(); 
 
-    // 1. Recolectar datos del formulario del modal
     const usernameInput = getEl('profile-username');
     const username = usernameInput.value.trim().toLowerCase();
 
@@ -815,34 +801,28 @@ const handlers = {
     const topGenetic2 = getEl('top-genetic-2').value;
     const topGenetic3 = getEl('top-genetic-3').value;
 
-    // 2. Validar el nombre de usuario
-    // Esta expresión regular permite letras, números y guión bajo, de 3 a 15 caracteres.
     const usernameRegex = /^[a-z0-9_]{3,15}$/;
     if (username && !usernameRegex.test(username)) {
         showNotification('El nombre de usuario solo puede contener letras minúsculas, números y guión bajo.', 'error');
         return;
     }
 
-    // 3. Preparar el array de genéticas, eliminando duplicados y vacíos
     const topGeneticsRaw = [topGenetic1, topGenetic2, topGenetic3];
-    const topGenetics = [...new Set(topGeneticsRaw)].filter(id => id !== ''); // Filtra vacíos y duplicados
+    const topGenetics = [...new Set(topGeneticsRaw)].filter(id => id !== ''); 
 
-    // 4. Construir el objeto a guardar en Firestore
     const dataToSave = {
         publicProfile: {
-            username: username || null, // Guardar null si está vacío
+            username: username || null, 
             topGenetics: topGenetics
         }
     };
 
-    // 5. Guardar en la base de datos
     try {
         const userDocRef = doc(db, 'users', userId);
-        // Usamos set con merge:true para crear o actualizar el campo publicProfile sin borrar otros datos del usuario
         await setDoc(userDocRef, dataToSave, { merge: true });
 
         showNotification('Perfil guardado con éxito.');
-        getEl('profileModal').style.display = 'none'; // Cerrar el modal
+        getEl('profileModal').style.display = 'none'; 
 
     } catch (error) {
         console.error("Error al guardar el perfil:", error);
@@ -931,7 +911,6 @@ const handlers = {
             try {
                 await batch.commit();
                 showNotification(`${salaNames.length} sala(s) creadas con éxito.`);
-                // Forzamos la recarga de salas para que el estado se actualice antes de pasar al paso 2
                 loadSalas(); 
             } catch (error) {
                 console.error("Error creando salas en masa:", error);
@@ -940,14 +919,12 @@ const handlers = {
             }
         }
 
-        // Cambiar la vista del modal al paso 2
         getEl('wizard-modal-title').textContent = 'Configuración Rápida - Paso 2: Ciclos';
         getEl('wizard-step-1').classList.add('hidden');
         getEl('wizard-step-2').classList.remove('hidden');
         getEl('wizard-step-1-next').classList.add('hidden');
         getEl('wizard-step-2-save').classList.remove('hidden');
 
-        // Añadimos una primera fila por defecto para guiar al usuario
         if (getEl('wizard-ciclos-container').childElementCount === 0) {
             renderWizardCicloRow(null, currentSalas);
         }
@@ -1020,7 +997,6 @@ const handlers = {
             return;
         }
         
-        // Usamos Set para obtener nombres únicos y evitar duplicados en el paso 2
         const uniqueNames = [...new Set(names)];
         renderBulkStep2(uniqueNames);
     },
@@ -1102,13 +1078,10 @@ const handlers = {
         const sala = currentSalas.find(s => s.id === salaId);
         return sala ? sala.name : 'Desconocida';
     },
-    // Este handler llama a la función de UI que crea el modal
     openPhenoEditModal: (individuo) => {
-    // La constante PHENOHUNT_TAGS la creamos al principio de este paso
     uiOpenPhenoEditModal(individuo, PHENOHUNT_TAGS);
     },
     openPromoteToGeneticModal: (individuo, originalGeneticId) => {
-    // Buscamos la data original de la genética para heredar el banco/parentales
     const originalGenetic = currentGenetics.find(g => g.id === originalGeneticId);
     if (originalGenetic) {
         openPromoteToGeneticModal(individuo, originalGenetic);
@@ -1176,7 +1149,6 @@ const handlers = {
             showNotification("Error al promover la genética.", "error");
         }
     },
-// Este handler es la lógica que se ejecuta cuando guardas el modal
     handlePhenoCardUpdate: async (e) => {
     e.preventDefault();
     const form = e.target;
@@ -1451,11 +1423,9 @@ const handlers = {
             }
         });
     },
-    // MODIFICADO: Ahora pasa el objeto handlers a la UI para poder conectar el botón del selector.
     openCicloModal: (ciclo = null, preselectedSalaId = null) => {
         uiOpenCicloModal(ciclo, currentSalas, preselectedSalaId, handlers);
     },
-    // NUEVO: Handler que abre el modal selector de genéticas
     openGeneticsSelector: (onConfirmCallback) => {
         // Ahora solo pasamos el catálogo maestro unificado.
         uiOpenGeneticsSelectorModal(currentGenetics, onConfirmCallback);

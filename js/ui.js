@@ -798,7 +798,19 @@ export function openGerminateModal(seed) {
 export function renderCicloDetails(ciclo, handlers) {
     let weeksToRender = [];
     let phaseTitle = '';
-
+    let currentWeekNumber = -1;
+    if (ciclo.estado !== 'en_secado') {
+        if (ciclo.phase === 'Floración' && ciclo.floweringStartDate) {
+            const diffDaysFlora = handlers.calculateDaysSince(ciclo.floweringStartDate);
+            if (diffDaysFlora !== null && diffDaysFlora >= 0) {
+                // El día 0-6 es semana 1, 7-13 es semana 2, etc.
+                currentWeekNumber = Math.floor(diffDaysFlora / 7) + 1;
+            }
+        } else if (ciclo.phase === 'Vegetativo' && ciclo.vegetativeWeeks && ciclo.vegetativeWeeks.length > 0) {
+            // En vegetativo, la semana actual es siempre la última del array
+            currentWeekNumber = ciclo.vegetativeWeeks[ciclo.vegetativeWeeks.length - 1].weekNumber;
+        }
+    }
     if (ciclo.phase === 'Vegetativo' && ciclo.vegetativeWeeks) {
         weeksToRender = ciclo.vegetativeWeeks;
         phaseTitle = 'Semanas de Vegetativo';
@@ -825,7 +837,7 @@ export function renderCicloDetails(ciclo, handlers) {
                 ${weeksToRender.sort((a,b) => a.weekNumber - b.weekNumber).map((week, index) => {
                     const phaseInfo = handlers.getPhaseInfo(week.phaseName || ciclo.phase);
                     const isLastWeek = week.weekNumber === lastWeekNumber;
-                    
+                    const isCurrentWeek = week.weekNumber === currentWeekNumber;
                     const deleteButtonHTML = `
                         <button 
                             data-action="delete-week" 
@@ -848,11 +860,12 @@ export function renderCicloDetails(ciclo, handlers) {
                                     ${deleteButtonHTML}
                                     <h4 class="font-bold text-lg text-gray-900 dark:text-white">Semana ${week.weekNumber} 
                                         <span class="text-sm font-normal px-2 py-1 rounded-full ml-2 ${phaseInfo.color}">${phaseInfo.name}</span>
+                                        ${isCurrentWeek ? '<span class="text-xs font-bold px-2 py-1 rounded-full ml-2 bg-amber-400 text-black">ACTUAL</span>' : ''}
                                     </h4>
                                 </div>
                                 <button class="btn-primary btn-base text-xs py-1 px-2 rounded-md add-log-for-week-btn" data-week='${JSON.stringify(week)}'>+ Registro</button>
                             </div>
-                            <div class="p-4 bg-white dark:bg-[#262626] rounded-b-lg space-y-3" id="logs-week-${week.weekNumber}">
+                                <div class="p-4 bg-white dark:bg-[#262626] rounded-b-lg space-y-3 ${!isCurrentWeek ? 'hidden' : ''}" id="logs-week-${week.weekNumber}">
                             </div>
                         </div>
                     `;
@@ -900,7 +913,6 @@ export function renderCicloDetails(ciclo, handlers) {
           `).join('')
         : '<p class="text-sm text-gray-500 dark:text-gray-400 italic">No hay genéticas definidas para este ciclo.</p>';
 
-    // --- NUEVO: Tarjeta de Detalles de Cultivo ---
     let cultivationDetailsHTML = '';
     const details = ciclo.cultivationDetails;
     if (details) {
@@ -931,7 +943,6 @@ export function renderCicloDetails(ciclo, handlers) {
             `;
         }
     }
-    // --- FIN DEL NUEVO BLOQUE ---
 
     const html = `
         <div data-ciclo-id="${ciclo.id}">
@@ -962,7 +973,6 @@ export function renderCicloDetails(ciclo, handlers) {
         </div>
     `;
     setTimeout(() => {
-        // ... (el resto de los listeners existentes)
         document.querySelectorAll('.add-log-for-week-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -990,11 +1000,9 @@ export function renderCicloDetails(ciclo, handlers) {
             finalizarBtn.addEventListener('click', () => handlers.openFinalizarCicloModal(ciclo));
         }
 
-        // Nuevo listener para nuestro botón de gestionar
         const manageGeneticsBtn = getEl('manage-genetics-btn');
         if (manageGeneticsBtn) {
             manageGeneticsBtn.addEventListener('click', () => {
-                // Llamará a un handler que crearemos en el siguiente paso
                 handlers.openManageGeneticsModal(ciclo.id);
             });
         }
