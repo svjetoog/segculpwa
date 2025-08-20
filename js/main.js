@@ -1776,14 +1776,19 @@ handlePhenoCardUpdate: async (e) => {
         getEl('app').classList.remove('hidden');
     },
     hideAllViews: () => {
-        ['app', 'ciclosView', 'cicloDetailView', 'toolsView', 'settingsView', 'historialView', 'phenohuntDetailView'].forEach(id => {
-            const el = getEl(id);
-            if (el) {
-                el.classList.add('hidden');
-                el.classList.remove('view-container');
-            }
-        });
-    },
+    console.log('--- INTENTANDO OCULTAR TODAS LAS VISTAS ---');
+    ['app', 'ciclosView', 'cicloDetailView', 'toolsView', 'settingsView', 'historialView', 'phenohuntDetailView'].forEach(id => {
+        const el = getEl(id);
+        if (el) {
+            console.log(`- Ocultando el elemento #${id}`);
+            el.classList.add('hidden');
+            el.classList.remove('view-container');
+        } else {
+            console.error(`- ERROR: No se pudo encontrar el elemento #${id} para ocultarlo.`);
+        }
+    });
+    console.log('--- OCULTAR VISTAS FINALIZADO ---');
+},
     switchToolsTab: (newTab) => {
         activeToolsTab = newTab;
         ['genetics', 'stock', 'baulSemillas', 'phenohunt', 'historial'].forEach(tab => {
