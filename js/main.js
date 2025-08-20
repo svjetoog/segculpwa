@@ -52,6 +52,7 @@ let sortableSalas = null;
 let sortableGenetics = null;
 let sortableStock = null;
 let sortableSeeds = null;
+let listenersInitialized = false;
 let notificationsUnsubscribe = null;
 let currentNotifications = [];
 
@@ -1776,17 +1777,14 @@ handlePhenoCardUpdate: async (e) => {
         getEl('app').classList.remove('hidden');
     },
     hideAllViews: () => {
-    console.log('--- INTENTANDO OCULTAR TODAS LAS VISTAS ---');
     ['app', 'ciclosView', 'cicloDetailView', 'toolsView', 'settingsView', 'historialView', 'phenohuntDetailView'].forEach(id => {
         const el = getEl(id);
         if (el) {
-            console.log(`- Ocultando el elemento #${id}`);
             el.classList.add('hidden');
             el.classList.remove('view-container');
-        } else {
-            console.error(`- ERROR: No se pudo encontrar el elemento #${id} para ocultarlo.`);
         }
     });
+},
     console.log('--- OCULTAR VISTAS FINALIZADO ---');
 },
     switchToolsTab: (newTab) => {
@@ -2365,7 +2363,10 @@ onAuthStateChanged(auth, async user => {
         appView.classList.remove('hidden');
         appView.classList.add('view-container');
         getEl('welcomeUser').innerText = `Anota todo, no seas pancho.`;
-
+        if (!listenersInitialized) {
+            initializeEventListeners(handlers);
+            listenersInitialized = true;
+        }
         loadSalas();
         loadCiclos();
         loadGenetics(); 
@@ -2373,12 +2374,12 @@ onAuthStateChanged(auth, async user => {
         loadPhenohunts();
         loadHistorial();
         loadNotifications();
-        initializeEventListeners(handlers);
         handlers.updateAdminUI(); // <--- Llamamos a la nueva función para mostrar/ocultar el botón
         
     } else {
         userId = null;
         currentUserRole = 'user'; // Reseteamos el rol al cerrar sesión
+        listenersInitialized = false;
 
         if (salasUnsubscribe) salasUnsubscribe();
         if (ciclosUnsubscribe) ciclosUnsubscribe();
