@@ -1785,8 +1785,6 @@ handlePhenoCardUpdate: async (e) => {
         }
     });
 },
-    console.log('--- OCULTAR VISTAS FINALIZADO ---');
-},
     switchToolsTab: (newTab) => {
         activeToolsTab = newTab;
         ['genetics', 'stock', 'baulSemillas', 'phenohunt', 'historial'].forEach(tab => {
@@ -2380,7 +2378,7 @@ onAuthStateChanged(auth, async user => {
         userId = null;
         currentUserRole = 'user'; // Reseteamos el rol al cerrar sesión
         listenersInitialized = false;
-
+        
         if (salasUnsubscribe) salasUnsubscribe();
         if (ciclosUnsubscribe) ciclosUnsubscribe();
         if (geneticsUnsubscribe) geneticsUnsubscribe();
