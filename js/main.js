@@ -2350,6 +2350,7 @@ onAuthStateChanged(auth, async user => {
         await runDataMigration(user.uid);
 
         handlers.hideAllViews();
+        getEl('authView').classList.add('hidden');
         const appView = getEl('app');
         appView.classList.remove('hidden');
         appView.classList.add('view-container');
@@ -2379,7 +2380,8 @@ onAuthStateChanged(auth, async user => {
         if (notificationsUnsubscribe) notificationsUnsubscribe();
 
         handlers.hideAllViews();
-        handlers.updateAdminUI(); // <--- Ocultamos el botón al cerrar sesión
+        getEl('app').classList.add('hidden');
+        handlers.updateAdminUI(); 
         const authView = getEl('authView');
         authView.classList.remove('hidden');
         authView.classList.add('view-container');

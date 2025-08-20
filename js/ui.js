@@ -521,7 +521,7 @@ export function openGeneticsSelectorModal(allGenetics, onConfirm) {
             </div>
             <div class="col-span-3 flex items-center gap-2">
                 <label for="${uniqueId}-qty" class="text-sm">Cant:</label>
-                <input type="number" id="${uniqueId}-qty" name="${uniqueId}-qty" min="1" max="${stock || 0}" value="1" disabled class="w-full p-1 rounded-md selector-quantity">
+                <input type="number" id="${uniqueId}-qty" name="${uniqueId}-qty" min="1" max="${stock || 0}" value="1" disabled class="w-16 p-1 rounded-md selector-quantity">
             </div>
             <div class="col-span-3 flex items-center justify-end">
                 <button type="button" disabled class="btn-base btn-secondary text-xs py-1 px-3 rounded-full selector-tracking-btn">
@@ -1062,7 +1062,7 @@ export function renderToolsView() {
                     + Añadir al Catálogo
                 </button>
             </div>
-            <div id="geneticsList" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            <div id="geneticsList" class="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-3 gap-4">
                 </div>
         </div>
         <div id="stockContent" class="hidden">
@@ -1292,7 +1292,7 @@ export function renderSalasGrid(salas, ciclos, handlers) {
         const ciclosInSala = ciclos.filter(c => c.salaId === sala.id);
         const activeCiclos = ciclosInSala.filter(c => c.estado !== 'finalizado');
         const salaCard = document.createElement('div');
-        salaCard.className = 'card rounded-xl p-5 flex flex-col justify-between aspect-square relative';
+        salaCard.className = 'card rounded-xl p-5 flex flex-col justify-between relative';
         salaCard.dataset.salaId = sala.id;
         
         const ciclosPreviewContainer = document.createElement('div');
